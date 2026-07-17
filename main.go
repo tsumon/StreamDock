@@ -414,9 +414,17 @@ func (d *DB) UpdateSite(id int64, name string, port int, targetURL, playbackTarg
 }
 
 func (d *DB) DeleteSite(id int64) error {
-	tx, _ := d.db.Begin()
-	tx.Exec("DELETE FROM traffic_logs WHERE site_id=?", id)
-	tx.Exec("DELETE FROM sites WHERE id=?", id)
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("DELETE FROM traffic_logs WHERE site_id=?", id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM sites WHERE id=?", id); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -1852,6 +1860,22 @@ func (a *App) handleSiteByID(w http.ResponseWriter, r *http.Request) {
 			a.jsonErr(w, 400, "invalid request")
 			return
 		}
+		name := oldSite.Name
+		if req.Name != "" {
+			name = req.Name
+		}
+		listenPort := oldSite.ListenPort
+		if req.ListenPort != 0 {
+			listenPort = req.ListenPort
+		}
+		targetURL := oldSite.TargetURL
+		if req.TargetURL != "" {
+			targetURL = req.TargetURL
+		}
+		if name == "" || listenPort == 0 || targetURL == "" {
+			a.jsonErr(w, 400, "name, listen_port, and target_url are required")
+			return
+		}
 		playbackTargetURL := oldSite.PlaybackTargetURL
 		if req.PlaybackTargetURL != nil {
 			playbackTargetURL = *req.PlaybackTargetURL
@@ -1868,7 +1892,7 @@ func (a *App) handleSiteByID(w http.ResponseWriter, r *http.Request) {
 		if req.UAMode == "" {
 			req.UAMode = oldSite.UAMode
 		}
-		if err := a.db.UpdateSite(id, req.Name, req.ListenPort, req.TargetURL, playbackTargetURL, playbackMode, streamHosts, req.UAMode, req.Quota, req.SpeedLimit); err != nil {
+		if err := a.db.UpdateSite(id, name, listenPort, targetURL, playbackTargetURL, playbackMode, streamHosts, req.UAMode, req.Quota, req.SpeedLimit); err != nil {
 			a.jsonErr(w, 500, err.Error())
 			return
 		}
@@ -1957,8 +1981,12 @@ func (a *App) handleUAProfiles(w http.ResponseWriter, r *http.Request) {
 	a.jsonOK(w, profiles)
 }
 
-// GET /api/events 闂?Server-Sent Events stream
+// GET /api/events — Server-Sent Events stream
 func (a *App) handleSSE(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		a.jsonErr(w, 405, "method not allowed")
+		return
+	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		a.jsonErr(w, 500, "SSE not supported")
@@ -2040,13 +2068,13 @@ func main() {
 	for i, arg := range os.Args[1:] {
 		switch arg {
 		case "--port", "-p":
-			if i+1 < len(os.Args)-1 {
+			if i+2 < len(os.Args) {
 				if p, err := strconv.Atoi(os.Args[i+2]); err == nil {
 					port = p
 				}
 			}
 		case "--db":
-			if i+1 < len(os.Args)-1 {
+			if i+2 < len(os.Args) {
 				dbPath = os.Args[i+2]
 			}
 		}
