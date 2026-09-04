@@ -21,7 +21,7 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build -o meridian .
+        run: go build -o streamdock .
 
   build:
     needs: verify
@@ -59,12 +59,12 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
-        run: go build -ldflags="-s -w" -o meridian-${{ matrix.suffix }} .
+        run: go build -ldflags="-s -w" -o streamdock-${{ matrix.suffix }} .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: meridian-${{ matrix.suffix }}
-          path: meridian-${{ matrix.suffix }}
+          name: streamdock-${{ matrix.suffix }}
+          path: streamdock-${{ matrix.suffix }}
 
   release:
     needs: build
@@ -83,7 +83,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: meridian-*
+          files: streamdock-*
           generate_release_notes: true
 
   docker:
@@ -94,7 +94,7 @@ jobs:
       packages: write
       contents: read
     env:
-      IMAGE_NAME: ghcr.io/snnabb/meridian
+      IMAGE_NAME: ghcr.io/tsumon/streamdock
 
     steps:
       - uses: actions/checkout@v5

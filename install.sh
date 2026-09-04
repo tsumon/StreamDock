@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Meridian — Emby reverse proxy management panel
+# StreamDock — Emby reverse proxy management panel
 # Interactive installer / updater / uninstaller
-# Usage: bash <(curl -sL https://raw.githubusercontent.com/tsumon/Meridian-merged/master/install.sh)
+# Usage: bash <(curl -sL https://raw.githubusercontent.com/tsumon/StreamDock/main/install.sh)
 
-REPO="tsumon/Meridian-merged"
+REPO="tsumon/StreamDock"
 INSTALL_DIR="/usr/local/bin"
-DATA_DIR="/opt/meridian"
-SERVICE_FILE="/etc/systemd/system/meridian.service"
-BIN_NAME="meridian"
+DATA_DIR="/opt/streamdock"
+SERVICE_FILE="/etc/systemd/system/streamdock.service"
+BIN_NAME="streamdock"
 
 # ─── Colors ───
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
@@ -80,24 +80,36 @@ do_install() {
     sudo mv "/tmp/${BIN_NAME}" "${INSTALL_DIR}/${BIN_NAME}"
     ok "二进制已安装"
 
-    # Create data directory
+    # Create data directory and system user
     if [ ! -d "$DATA_DIR" ]; then
         sudo mkdir -p "$DATA_DIR"
         ok "数据目录已创建: $DATA_DIR"
     fi
+    if ! id streamdock >/dev/null 2>&1; then
+        sudo useradd --system --home-dir "$DATA_DIR" --shell /usr/sbin/nologin streamdock \
+            || sudo useradd --system --home-dir "$DATA_DIR" --shell /bin/false streamdock
+        ok "已创建系统用户 streamdock"
+    fi
+    sudo chown -R streamdock:streamdock "$DATA_DIR"
 
     # Generate JWT secret if not exists
     local env_file="${DATA_DIR}/.env"
     if [ ! -f "$env_file" ]; then
-        local secret
+        local secret setup_token
         secret=$(openssl rand -hex 32)
+        setup_token=$(openssl rand -hex 32)
         sudo bash -c "cat > $env_file" <<ENVEOF
 JWT_SECRET=${secret}
+SETUP_TOKEN=${setup_token}
 PORT=9090
-DB_PATH=${DATA_DIR}/meridian.db
+DB_PATH=${DATA_DIR}/streamdock.db
+PANEL_BIND_ADDR=127.0.0.1
 ENVEOF
         sudo chmod 600 "$env_file"
+        sudo chown streamdock:streamdock "$env_file"
         ok "配置文件已生成: $env_file"
+        echo -e "  首次初始化令牌 SETUP_TOKEN=${BOLD}${setup_token}${NC}"
+        echo -e "  面板默认只监听 127.0.0.1；需要公网访问时改 ${DATA_DIR}/.env 中的 PANEL_BIND_ADDR 并设 ALLOW_INSECURE_HTTP=true"
     else
         info "配置文件已存在，跳过: $env_file"
     fi
@@ -107,11 +119,13 @@ ENVEOF
         info "配置 systemd 服务..."
         sudo bash -c "cat > $SERVICE_FILE" <<SVCEOF
 [Unit]
-Description=Meridian — Emby reverse proxy management panel
+Description=StreamDock — Emby reverse proxy management panel
 After=network.target
 
 [Service]
 Type=simple
+User=streamdock
+Group=streamdock
 EnvironmentFile=${DATA_DIR}/.env
 ExecStart=${INSTALL_DIR}/${BIN_NAME}
 WorkingDirectory=${DATA_DIR}
@@ -122,14 +136,14 @@ RestartSec=5
 WantedBy=multi-user.target
 SVCEOF
         sudo systemctl daemon-reload
-        sudo systemctl enable meridian
+        sudo systemctl enable streamdock
         ok "systemd 服务已配置"
 
         echo ""
-        read -rp "$(echo -e "${CYAN}是否立即启动 Meridian？[Y/n]:${NC} ")" start_now
+        read -rp "$(echo -e "${CYAN}是否立即启动 StreamDock？[Y/n]:${NC} ")" start_now
         if [[ "$start_now" != "n" && "$start_now" != "N" ]]; then
-            sudo systemctl restart meridian
-            ok "Meridian 已启动"
+            sudo systemctl restart streamdock
+            ok "StreamDock 已启动"
         fi
     else
         warn "未检测到 systemd，跳过服务配置"
@@ -138,19 +152,19 @@ SVCEOF
 
     echo ""
     echo -e "${GREEN}════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  Meridian $version 安装完成${NC}"
+    echo -e "${GREEN}  StreamDock $version 安装完成${NC}"
     echo -e "${GREEN}════════════════════════════════════════${NC}"
     echo -e "  面板地址:  ${BOLD}http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost'):9090${NC}"
     echo -e "  配置文件:  ${DATA_DIR}/.env"
     echo -e "  数据目录:  ${DATA_DIR}"
-    echo -e "  服务管理:  systemctl {start|stop|restart|status} meridian"
+    echo -e "  服务管理:  systemctl {start|stop|restart|status} streamdock"
     echo ""
 }
 
 # ─── Uninstall ───
 do_uninstall() {
     echo ""
-    warn "即将卸载 Meridian，以下内容将被移除："
+    warn "即将卸载 StreamDock，以下内容将被移除："
     echo "  - ${INSTALL_DIR}/${BIN_NAME}"
     echo "  - ${SERVICE_FILE}"
     echo ""
@@ -165,8 +179,8 @@ do_uninstall() {
 
     # Stop service
     if [ -f "$SERVICE_FILE" ]; then
-        sudo systemctl stop meridian 2>/dev/null || true
-        sudo systemctl disable meridian 2>/dev/null || true
+        sudo systemctl stop streamdock 2>/dev/null || true
+        sudo systemctl disable streamdock 2>/dev/null || true
         sudo rm -f "$SERVICE_FILE"
         sudo systemctl daemon-reload
         ok "systemd 服务已移除"
@@ -185,14 +199,14 @@ do_uninstall() {
     fi
 
     echo ""
-    ok "Meridian 已卸载"
+    ok "StreamDock 已卸载"
 }
 
 # ─── Main menu ───
 main() {
     echo ""
     echo -e "${BOLD}╔══════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}║     Meridian 安装管理工具             ║${NC}"
+    echo -e "${BOLD}║     StreamDock 安装管理工具           ║${NC}"
     echo -e "${BOLD}║     Emby reverse proxy panel         ║${NC}"
     echo -e "${BOLD}╚══════════════════════════════════════╝${NC}"
     echo ""

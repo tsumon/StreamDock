@@ -12,7 +12,11 @@ const Router = {
   },
 
   resolve() {
-    const hash = location.hash.slice(1) || 'dashboard';
+    let hash = location.hash.slice(1) || 'dashboard';
+    if (!this.routes[hash] && hash !== 'dashboard') {
+      hash = 'dashboard';
+      if (location.hash.slice(1) !== hash) location.hash = hash;
+    }
     const previous = this.current;
 
     if (previous === 'dashboard' && hash !== 'dashboard' && typeof stopDashSSE === 'function') {
@@ -22,10 +26,16 @@ const Router = {
     this.current = hash;
 
     document.querySelectorAll('.topnav-link').forEach(link => {
-      link.classList.toggle('active', link.dataset.page === hash);
+      const on = link.dataset.page === hash;
+      link.classList.toggle('active', on);
+      if (on) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
     });
     document.querySelectorAll('.mobile-tab').forEach(tab => {
-      tab.classList.toggle('active', tab.dataset.page === hash);
+      const on = tab.dataset.page === hash;
+      tab.classList.toggle('active', on);
+      if (on) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
     });
 
     document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));

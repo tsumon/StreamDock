@@ -1,7 +1,15 @@
 # Binary
+streamdock
+streamdock.exe
 meridian
 meridian.exe
 *.exe
+
+# Environment / local secrets
+.env
+.env.*
+*.env
+!.env.example
 
 # Database
 *.db

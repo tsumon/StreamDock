@@ -2,17 +2,23 @@
 function renderDiag() {
   const page = document.getElementById('page-diagnostics');
   page.innerHTML = `
-    <h1 class="section-title fade-up">故障诊断</h1>
-    <p class="section-sub fade-up stagger-1">查看主回源、播放回源、上游证书和代理配置状态</p>
-    <div class="diag-toolbar fade-up stagger-1">
-      <select class="form-select" id="diag-select">
-        <option value="">加载中...</option>
+    <header class="page-header fade-in">
+      <h1 class="section-title">故障诊断</h1>
+      <p class="section-sub">探测主回源、播放回源、上游证书和本地监听。健康不等于业务可用。</p>
+    </header>
+    <div class="diag-toolbar fade-in">
+      <select class="form-select" id="diag-select" aria-label="选择站点">
+        <option value="">加载中…</option>
       </select>
-      <button class="btn-scan" id="btn-scan">开始诊断</button>
+      <button type="button" class="btn-scan" id="btn-scan">开始诊断</button>
     </div>
     <div class="diag-grid" id="diag-grid">
-      <div class="diag-card diag-card-wide fade-up stagger-2">
-        <div class="diag-empty">选择站点后开始诊断</div>
+      <div class="diag-card diag-card-wide">
+        ${UI.empty({
+          inline: true,
+          title: '还没有诊断结果',
+          body: '选择站点后点「开始诊断」。会探测主回源、播放回源、证书和本地监听。',
+        })}
       </div>
     </div>
   `;
@@ -22,29 +28,68 @@ function renderDiag() {
 }
 
 async function loadDiagSites() {
+  const sel = document.getElementById('diag-select');
+  const grid = document.getElementById('diag-grid');
   try {
     const sites = await API.listSites();
-    const sel = document.getElementById('diag-select');
     if (!sites || sites.length === 0) {
       sel.innerHTML = '<option value="">暂无站点</option>';
+      grid.innerHTML = `<div class="diag-card diag-card-wide">${UI.empty({
+        inline: true,
+        title: '还没有站点可诊断',
+        body: '先到站点管理添加一个反代。',
+        actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
+      })}</div>`;
+      grid.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));
       return;
     }
     sel.innerHTML = sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
   } catch (e) {
-    Toast.error('加载站点失败');
+    sel.innerHTML = '<option value="">加载失败</option>';
+    grid.innerHTML = `<div class="diag-card diag-card-wide">${UI.error({
+      inline: true,
+      body: e.message,
+      retry: true,
+    })}</div>`;
+    grid.querySelector('[data-error-retry]')?.addEventListener('click', loadDiagSites);
   }
+}
+
+function diagSkeleton() {
+  return `
+    <div class="diag-card diag-card-wide" aria-hidden="true">
+      <div class="skeleton skeleton-line" style="width:30%;height:16px;margin-bottom:16px"></div>
+      <div class="skeleton skeleton-line" style="width:90%;margin-bottom:8px"></div>
+      <div class="skeleton skeleton-line" style="width:70%"></div>
+    </div>
+    <div class="diag-card" aria-hidden="true">
+      <div class="skeleton skeleton-line" style="width:40%;height:16px;margin-bottom:16px"></div>
+      <div class="skeleton skeleton-line" style="width:80%;margin-bottom:8px"></div>
+      <div class="skeleton skeleton-line" style="width:60%"></div>
+    </div>
+    <div class="diag-card" aria-hidden="true">
+      <div class="skeleton skeleton-line" style="width:40%;height:16px;margin-bottom:16px"></div>
+      <div class="skeleton skeleton-line" style="width:80%;margin-bottom:8px"></div>
+      <div class="skeleton skeleton-line" style="width:60%"></div>
+    </div>
+  `;
 }
 
 async function runDiag() {
   const siteId = document.getElementById('diag-select').value;
   if (!siteId) {
-    Toast.error('请选择一个站点');
+    Toast.error('先选择一个站点。');
+    document.getElementById('diag-select').focus();
     return;
   }
 
   const btn = document.getElementById('btn-scan');
-  btn.textContent = '诊断中...';
+  const grid = document.getElementById('diag-grid');
+  btn.textContent = '诊断中…';
   btn.classList.add('running');
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  grid.innerHTML = diagSkeleton();
 
   try {
     const result = await API.diagSite(siteId);
@@ -58,39 +103,47 @@ async function runDiag() {
       playbackNote(playback, primary),
       primaryProbeNote(primary),
       '健康表示上游可达性与探针结果，不是完整业务可用性证明。',
-      'TLS 展示的是上游站点证书，不是 Meridian 自己监听端口的证书。',
+      'TLS 展示的是上游站点证书，不是 StreamDock 自己监听端口的证书。',
     ].filter(Boolean);
 
     const cards = [
       renderDiagNotes(notes),
-      renderHealthCard('主回源健康', '主回源可达性与探针结果', primary, 'stagger-2'),
-      renderTLSCard('主回源 TLS', '主回源上游站点证书信息', primary, 'stagger-3'),
+      renderHealthCard('主回源健康', '主回源可达性与探针结果', primary),
+      renderTLSCard('主回源 TLS', '主回源上游站点证书信息', primary),
     ];
 
     if (playback.show_health) {
-      cards.push(renderHealthCard('播放回源健康', '播放、转码、直链上游的可达性与探针结果', playback, 'stagger-4'));
+      cards.push(renderHealthCard('播放回源健康', '播放、转码、直链上游的可达性与探针结果', playback));
     }
     if (playback.show_tls) {
-      cards.push(renderTLSCard('播放回源 TLS', '播放回源上游站点证书信息', playback, 'stagger-5'));
+      cards.push(renderTLSCard('播放回源 TLS', '播放回源上游站点证书信息', playback));
     }
 
-    cards.push(renderHeadersCard(headers, 'stagger-5'));
-    cards.push(renderProxyCard(proxy, 'stagger-6'));
+    cards.push(renderHeadersCard(headers));
+    cards.push(renderProxyCard(proxy));
 
-    document.getElementById('diag-grid').innerHTML = cards.filter(Boolean).join('');
+    grid.innerHTML = cards.filter(Boolean).join('');
   } catch (e) {
-    Toast.error('诊断失败: ' + e.message);
+    grid.innerHTML = `<div class="diag-card diag-card-wide">${UI.error({
+      inline: true,
+      title: '诊断失败',
+      body: e.message,
+      retry: true,
+    })}</div>`;
+    grid.querySelector('[data-error-retry]')?.addEventListener('click', runDiag);
   } finally {
     btn.classList.remove('running');
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
     btn.textContent = '开始诊断';
   }
 }
 
 function renderDiagNotes(notes) {
   return `
-    <div class="diag-card diag-card-wide fade-up stagger-2">
+    <div class="diag-card diag-card-wide">
       <div class="diag-head">
-        <div class="diag-icon" style="background:rgba(191,90,242,.16)">
+        <div class="diag-icon" style="background:var(--purple-dim)">
           <svg viewBox="0 0 24 24" style="stroke:var(--purple)"><path d="M12 16v.01"/><path d="M12 8a4 4 0 0 1 4 4c0 2-1.5 2.8-2.3 3.6-.5.5-.7.9-.7 1.4"/><circle cx="12" cy="12" r="10"/></svg>
         </div>
         <div>
@@ -105,14 +158,14 @@ function renderDiagNotes(notes) {
   `;
 }
 
-function renderHealthCard(title, subtitle, upstream, staggerClass) {
+function renderHealthCard(title, subtitle, upstream) {
   const health = upstream.health || {};
   const probe = health.probe || {};
   const latency = typeof health.latency_ms === 'number' ? health.latency_ms : null;
   const latencyText = latency === null ? '--' : `${latency}ms`;
 
   return `
-    <div class="diag-card fade-up ${staggerClass}">
+    <div class="diag-card">
       <div class="diag-head">
         <div class="diag-icon" style="background:var(--green-dim)">
           <svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -136,16 +189,16 @@ function renderHealthCard(title, subtitle, upstream, staggerClass) {
   `;
 }
 
-function renderTLSCard(title, subtitle, upstream, staggerClass) {
+function renderTLSCard(title, subtitle, upstream) {
   const tls = upstream.tls || {};
   const daysLeft = typeof tls.days_left === 'number' ? tls.days_left : null;
   const expiresText = tls.expires_at ? `${tls.expires_at}${daysLeft !== null ? ` (${daysLeft} 天)` : ''}` : '未获取';
 
   return `
-    <div class="diag-card fade-up ${staggerClass}">
+    <div class="diag-card">
       <div class="diag-head">
         <div class="diag-icon" style="background:rgba(10,132,255,.15)">
-          <svg viewBox="0 0 24 24" style="stroke:var(--blue)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <svg viewBox="0 0 24 24" style="stroke:var(--primary)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <div>
           <div class="diag-title">${title}</div>
@@ -160,23 +213,23 @@ function renderTLSCard(title, subtitle, upstream, staggerClass) {
           <div class="diag-row"><span class="diag-key">到期时间</span><span class="diag-val ${daysLeft !== null && daysLeft < 30 ? 'warn' : 'good'}">${diagText(expiresText)}</span></div>
           ${tls.error ? `<div class="diag-row"><span class="diag-key">TLS 结果</span><span class="diag-val bad diag-wrap">${esc(tls.error)}</span></div>` : ''}
         ` : `
-          <div class="diag-row"><span class="diag-key">TLS</span><span class="diag-val" style="color:var(--white-38)">该上游未使用 HTTPS</span></div>
+          <div class="diag-row"><span class="diag-key">TLS</span><span class="diag-val" style="color:var(--ink-muted)">该上游未使用 HTTPS</span></div>
         `}
       </div>
     </div>
   `;
 }
 
-function renderHeadersCard(headers, staggerClass) {
+function renderHeadersCard(headers) {
   return `
-    <div class="diag-card fade-up ${staggerClass}">
+    <div class="diag-card">
       <div class="diag-head">
         <div class="diag-icon" style="background:var(--teal-dim)">
           <svg viewBox="0 0 24 24" style="stroke:var(--teal)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
         <div>
           <div class="diag-title">请求头配置</div>
-          <div class="diag-subtitle">Meridian 发往上游时将带上的 UA / Client</div>
+          <div class="diag-subtitle">StreamDock 发往上游时将带上的 UA / Client</div>
         </div>
       </div>
       <div class="diag-rows">
@@ -189,16 +242,16 @@ function renderHeadersCard(headers, staggerClass) {
   `;
 }
 
-function renderProxyCard(proxy, staggerClass) {
+function renderProxyCard(proxy) {
   return `
-    <div class="diag-card fade-up ${staggerClass}">
+    <div class="diag-card">
       <div class="diag-head">
         <div class="diag-icon" style="background:var(--orange-dim)">
           <svg viewBox="0 0 24 24" style="stroke:var(--orange)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
         <div>
           <div class="diag-title">代理状态</div>
-          <div class="diag-subtitle">Meridian 本地反代进程与监听状态</div>
+          <div class="diag-subtitle">StreamDock 本地反代进程与监听状态</div>
         </div>
       </div>
       <div class="diag-rows">

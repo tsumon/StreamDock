@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="220" viewBox="0 0 1200 220" role="img" aria-labelledby="flow-title flow-desc">
+  <title id="flow-title">StreamDock first-run flow</title>
+  <desc id="flow-desc">Clone the current GitHub repository, build the streamdock binary, add a reverse-proxy site, then export a plaintext JSON backup.</desc>
+
+  <rect width="1200" height="220" rx="26" fill="#050607"/>
+  <rect x="1" y="1" width="1198" height="218" rx="25" fill="none" stroke="#FFFFFF14" stroke-width="1"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <rect x="36" y="48" width="252" height="124" rx="14" fill="#101214"/>
+    <text x="162" y="88" text-anchor="middle" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">01</text>
+    <text x="162" y="118" text-anchor="middle" fill="#F4F6F8" font-size="22" font-weight="600">Clone</text>
+    <text x="162" y="146" text-anchor="middle" fill="#C9CED6" font-size="18">tsumon/Meridian-merged</text>
+
+    <path d="M300 110 h36" stroke="#0A84FF" stroke-width="2"/>
+
+    <rect x="348" y="48" width="252" height="124" rx="14" fill="#101214"/>
+    <text x="474" y="88" text-anchor="middle" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">02</text>
+    <text x="474" y="118" text-anchor="middle" fill="#F4F6F8" font-size="22" font-weight="600">Build</text>
+    <text x="474" y="146" text-anchor="middle" fill="#C9CED6" font-size="18">go build -o streamdock</text>
+
+    <path d="M612 110 h36" stroke="#0A84FF" stroke-width="2"/>
+
+    <rect x="660" y="48" width="252" height="124" rx="14" fill="#101214"/>
+    <text x="786" y="88" text-anchor="middle" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">03</text>
+    <text x="786" y="118" text-anchor="middle" fill="#F4F6F8" font-size="22" font-weight="600">Add a site</text>
+    <text x="786" y="146" text-anchor="middle" fill="#C9CED6" font-size="18">listen port → origin</text>
+
+    <path d="M924 110 h36" stroke="#0A84FF" stroke-width="2"/>
+
+    <rect x="972" y="48" width="192" height="124" rx="14" fill="#0A84FF"/>
+    <text x="1068" y="88" text-anchor="middle" fill="#D6E8FF" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">04</text>
+    <text x="1068" y="118" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="600">Export</text>
+    <text x="1068" y="146" text-anchor="middle" fill="#EAF3FF" font-size="18">JSON backup</text>
+  </g>
+</svg>

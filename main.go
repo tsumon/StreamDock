@@ -6,12 +6,14 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -34,7 +36,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 
-	"meridian/web"
+	"streamdock/web"
 )
 
 // 闂傚倸鍊搁崐椋庣矆娴ｅ搫顥氭い鎾卞灩绾惧潡鏌曢崼婵愭Ц缂佲偓婢舵劗鍙撻柛銉ｅ妿閳藉鏌ｉ妶澶岀暫闁哄矉绱曟禒锔炬嫚閹绘帒顫撻梻浣虹帛閹稿鎯勯鐐茶摕闁绘柨鍚嬮崵瀣亜閹哄棗浜炬繝寰枫倕袚缂佺粯鐩畷銊╊敊閸撗呭帨闂備礁鎼懟顖滅矓瑜版帒绠栨繝濠傚悩閻旂厧浼犻柛鏇炵仛缂嶅倿姊婚崒娆戭槮闁圭⒈鍋婇獮濠呯疀濞戞瑥浜楅梺璺ㄥ枔婵挳寮伴妷鈺傜叆闁绘柨鎼瓭缂備胶濮甸惄顖炲蓟閺囩喓绡€闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及?// UA Profiles 闂?only 3 modes
@@ -64,6 +66,27 @@ func getUAProfile(mode string) UAProfile {
 var jwtSecret []byte
 var jwtSecretEphemeral bool
 
+var appVersion = "v1.3.1"
+
+const (
+	sessionCookieName      = "streamdock_session"
+	defaultDBFile          = "streamdock.db"
+	legacyDBFile           = "meridian.db"
+	backupFormatVersion    = "streamdock-v1"
+	legacyBackupVersion    = "meridian-v1"
+	backupDownloadName     = "streamdock_backup.json"
+	sessionDuration        = 72 * time.Hour
+	maxJSONBodyBytes       = 512 << 10
+	maxLoginFailures       = 5
+	maxTrackedLoginClients = 10000
+	loginFailureWindow     = time.Minute
+	loginLockoutDuration   = time.Minute
+	minSecretBytes         = 32
+	minAdminPasswordBytes  = 12
+	maxAdminPasswordBytes  = 72
+	maxAdminUsernameChars  = 64
+)
+
 func init() {
 	var err error
 	jwtSecret, jwtSecretEphemeral, err = resolveJWTSecret(os.Getenv("JWT_SECRET"))
@@ -74,6 +97,9 @@ func init() {
 
 func resolveJWTSecret(value string) ([]byte, bool, error) {
 	if value != "" {
+		if len(value) < minSecretBytes {
+			return nil, false, fmt.Errorf("JWT_SECRET must be at least %d bytes", minSecretBytes)
+		}
 		return []byte(value), false, nil
 	}
 	secret := make([]byte, 32)
@@ -81,6 +107,65 @@ func resolveJWTSecret(value string) ([]byte, bool, error) {
 		return nil, false, fmt.Errorf("generate JWT secret: %w", err)
 	}
 	return secret, true, nil
+}
+
+func resolveSetupToken(userCount int, value string) (string, bool, error) {
+	if userCount > 0 {
+		return "", false, nil
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		secret := make([]byte, 32)
+		if _, err := rand.Read(secret); err != nil {
+			return "", false, fmt.Errorf("generate SETUP_TOKEN: %w", err)
+		}
+		return hex.EncodeToString(secret), true, nil
+	}
+	if len(value) < minSecretBytes {
+		return "", false, fmt.Errorf("SETUP_TOKEN must be at least %d bytes", minSecretBytes)
+	}
+	return value, false, nil
+}
+
+func setupTokenMatches(expected, provided string) bool {
+	if expected == "" {
+		return false
+	}
+	expectedHash := sha256.Sum256([]byte(expected))
+	providedHash := sha256.Sum256([]byte(provided))
+	return subtle.ConstantTimeCompare(expectedHash[:], providedHash[:]) == 1
+}
+
+func envBool(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func panelListenAddr(bindAddress string, port int) (string, error) {
+	if port < 1 || port > 65535 {
+		return "", fmt.Errorf("panel port must be between 1 and 65535, got %d", port)
+	}
+	bindAddress = strings.TrimSpace(bindAddress)
+	if bindAddress == "" {
+		bindAddress = "127.0.0.1"
+	}
+	if net.ParseIP(bindAddress) == nil {
+		return "", fmt.Errorf("PANEL_BIND_ADDR must be an IP address, got %q", bindAddress)
+	}
+	return net.JoinHostPort(bindAddress, strconv.Itoa(port)), nil
+}
+
+func panelBindIsLoopback(bindAddress string) bool {
+	bindAddress = strings.TrimSpace(bindAddress)
+	if bindAddress == "" {
+		return true
+	}
+	ip := net.ParseIP(bindAddress)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Minimal JWT 闂?no external dependency
@@ -109,7 +194,7 @@ func validateToken(token string) (int64, string, error) {
 		return 0, "", fmt.Errorf("invalid token")
 	}
 	expectedSig := hmacSHA256(parts[0]+"."+parts[1], jwtSecret)
-	if parts[2] != expectedSig {
+	if !hmac.Equal([]byte(parts[2]), []byte(expectedSig)) {
 		return 0, "", fmt.Errorf("invalid signature")
 	}
 	payload, err := base64urlDecode(parts[1])
@@ -342,15 +427,53 @@ func (d *DB) CreateUser(username, password string) (int64, error) {
 	return res.LastInsertId()
 }
 
+var errAdminAlreadyExists = errors.New("admin user already exists")
+var errInvalidCredentials = errors.New("invalid username or password")
+
+func (d *DB) CreateInitialUser(username, password string) (int64, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return 0, err
+	}
+	res, err := d.db.Exec(`
+		INSERT INTO users (username, password_hash)
+		SELECT ?, ?
+		WHERE NOT EXISTS (SELECT 1 FROM users)
+	`, username, string(hash))
+	if err != nil {
+		return 0, err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if rows != 1 {
+		return 0, errAdminAlreadyExists
+	}
+	return res.LastInsertId()
+}
+
+var invalidUserPasswordHash = func() []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte("streamdock-invalid-user"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	return hash
+}()
+
 func (d *DB) VerifyUser(username, password string) (int64, error) {
 	var id int64
 	var hash string
 	err := d.db.QueryRow("SELECT id, password_hash FROM users WHERE username=?", username).Scan(&id, &hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		_ = bcrypt.CompareHashAndPassword(invalidUserPasswordHash, []byte(password))
+		return 0, errInvalidCredentials
+	}
 	if err != nil {
-		return 0, fmt.Errorf("user not found")
+		return 0, err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		return 0, fmt.Errorf("invalid password")
+		return 0, errInvalidCredentials
 	}
 	return id, nil
 }
@@ -777,7 +900,14 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, target *url.URL, pr
 		}
 	}
 	if scheme == "wss" {
-		upstreamConn, err = tls.DialWithDialer(dialer, "tcp", host, &tls.Config{InsecureSkipVerify: true})
+		serverName := host
+		if h, _, splitErr := net.SplitHostPort(host); splitErr == nil {
+			serverName = h
+		}
+		upstreamConn, err = tls.DialWithDialer(dialer, "tcp", host, &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: serverName,
+		})
 	} else {
 		upstreamConn, err = dialer.Dial("tcp", host)
 	}
@@ -864,11 +994,6 @@ func (pm *ProxyManager) StartSite(site Site) error {
 			req.Host = upstream.Host
 			applyUAProfileHeaders(req.Header, profile)
 		},
-		ModifyResponse: func(resp *http.Response) error {
-			resp.Header.Del("X-Frame-Options")
-			resp.Header.Del("Content-Security-Policy")
-			return nil
-		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			log.Printf("[%s] proxy error: %v", site.Name, err)
 			w.WriteHeader(http.StatusBadGateway)
@@ -896,7 +1021,7 @@ func (pm *ProxyManager) StartSite(site Site) error {
 			if currentUsed >= site.TrafficQuota {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte(`{"error":"濠电姷鏁告慨鐑藉极閹间礁纾婚柣鏃傚劋瀹曞弶绻濋棃娑氬妞ゆ劘濮ら幈銊ノ熼幐搴ｃ€愰梻鍌氬亞閸ㄥ爼寮婚敐澶婄闁绘垵娲ら崣鏇犵磽娴ｇ懓鏁剧紒鎻掑⒔閹广垹鈹戠€ｎ偒妫冨┑鐐村灦閻燁垰螞閻愬樊娓婚柕鍫濇閻撱儵鏌ㄩ弴顏嗙暤闁糕斁鍋撳銈嗗笒閸犳艾顭囬幇鐗堢厽闁斥晛鍟粈鍫澝瑰鍜佺劸闁宠閰ｉ獮姗€鎼归銈傚亾椤掑嫭鈷戦梻鍫熺〒婢ф洘绻涚拠褏绉柟?}`))
+				w.Write([]byte(`{"error":"traffic quota exceeded"}`))
 				return
 			}
 		}
@@ -1496,9 +1621,208 @@ func diagnoseSite(site *Site, pm *ProxyManager) DiagResult {
 
 // 闂傚倸鍊搁崐椋庣矆娴ｅ搫顥氭い鎾卞灩绾惧潡鏌曢崼婵愭Ц缂佲偓婢舵劗鍙撻柛銉ｅ妿閳藉鏌ｉ妶澶岀暫闁哄矉绱曟禒锔炬嫚閹绘帒顫撻梻浣虹帛閹稿鎯勯鐐茶摕闁绘柨鍚嬮崵瀣亜閹哄棗浜炬繝寰枫倕袚缂佺粯鐩畷銊╊敊閸撗呭帨闂備礁鎼懟顖滅矓瑜版帒绠栨繝濠傚悩閻旂厧浼犻柛鏇炵仛缂嶅倿姊婚崒娆戭槮闁圭⒈鍋婇獮濠呯疀濞戞瑥浜楅梺璺ㄥ枔婵挳寮伴妷鈺傜叆闁绘柨鎼瓭缂備胶濮甸惄顖炲蓟閺囩喓绡€闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及?// HTTP API
 // 闂傚倸鍊搁崐椋庣矆娴ｅ搫顥氭い鎾卞灩绾惧潡鏌曢崼婵愭Ц缂佲偓婢舵劗鍙撻柛銉ｅ妿閳藉鏌ｉ妶澶岀暫闁哄矉绱曟禒锔炬嫚閹绘帒顫撻梻浣虹帛閹稿鎯勯鐐茶摕闁绘柨鍚嬮崵瀣亜閹哄棗浜炬繝寰枫倕袚缂佺粯鐩畷銊╊敊閸撗呭帨闂備礁鎼懟顖滅矓瑜版帒绠栨繝濠傚悩閻旂厧浼犻柛鏇炵仛缂嶅倿姊婚崒娆戭槮闁圭⒈鍋婇獮濠呯疀濞戞瑥浜楅梺璺ㄥ枔婵挳寮伴妷鈺傜叆闁绘柨鎼瓭缂備胶濮甸惄顖炲蓟閺囩喓绡€闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及?
+type loginAttempt struct {
+	failures     int
+	firstFailure time.Time
+	blockedUntil time.Time
+	lastSeen     time.Time
+}
+
+type loginRateLimiter struct {
+	mu         sync.Mutex
+	attempts   map[string]loginAttempt
+	maxEntries int
+}
+
+func newLoginRateLimiter() *loginRateLimiter {
+	return newLoginRateLimiterWithLimit(maxTrackedLoginClients)
+}
+
+func newLoginRateLimiterWithLimit(maxEntries int) *loginRateLimiter {
+	if maxEntries < 1 {
+		maxEntries = 1
+	}
+	return &loginRateLimiter{
+		attempts:   make(map[string]loginAttempt),
+		maxEntries: maxEntries,
+	}
+}
+
+func (l *loginRateLimiter) pruneExpired(now time.Time) {
+	for client, attempt := range l.attempts {
+		if now.Before(attempt.blockedUntil) {
+			continue
+		}
+		if attempt.firstFailure.IsZero() || !now.Before(attempt.firstFailure.Add(loginFailureWindow)) {
+			delete(l.attempts, client)
+		}
+	}
+}
+
+func (l *loginRateLimiter) evictLeastRecentlySeen() {
+	var oldestClient string
+	var oldestSeen time.Time
+	for client, attempt := range l.attempts {
+		seen := attempt.lastSeen
+		if seen.IsZero() {
+			seen = attempt.firstFailure
+		}
+		if oldestClient == "" || seen.Before(oldestSeen) {
+			oldestClient = client
+			oldestSeen = seen
+		}
+	}
+	if oldestClient != "" {
+		delete(l.attempts, oldestClient)
+	}
+}
+
+func (l *loginRateLimiter) allow(client string, now time.Time) (bool, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.pruneExpired(now)
+	attempt, ok := l.attempts[client]
+	if !ok {
+		return true, 0
+	}
+	attempt.lastSeen = now
+	if now.Before(attempt.blockedUntil) {
+		l.attempts[client] = attempt
+		return false, attempt.blockedUntil.Sub(now)
+	}
+	l.attempts[client] = attempt
+	return true, 0
+}
+
+func (l *loginRateLimiter) recordFailure(client string, now time.Time) (bool, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.pruneExpired(now)
+	attempt, exists := l.attempts[client]
+	if !exists && len(l.attempts) >= l.maxEntries {
+		l.evictLeastRecentlySeen()
+	}
+	if attempt.firstFailure.IsZero() || now.Sub(attempt.firstFailure) >= loginFailureWindow {
+		attempt = loginAttempt{firstFailure: now}
+	}
+	attempt.failures++
+	attempt.lastSeen = now
+	if attempt.failures >= maxLoginFailures {
+		attempt.blockedUntil = now.Add(loginLockoutDuration)
+	}
+	l.attempts[client] = attempt
+	if now.Before(attempt.blockedUntil) {
+		return true, attempt.blockedUntil.Sub(now)
+	}
+	return false, 0
+}
+
+func (l *loginRateLimiter) reset(client string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.attempts, client)
+}
+
+func requestClientKey(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil && host != "" {
+		return host
+	}
+	if r.RemoteAddr != "" {
+		return r.RemoteAddr
+	}
+	return "unknown"
+}
+
+func originMatchesRequestHost(origin string, r *http.Request) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.User != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	if parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return false
+	}
+	return strings.EqualFold(parsed.Host, r.Host)
+}
+
+func refererMatchesRequestHost(referer string, r *http.Request) bool {
+	parsed, err := url.Parse(referer)
+	if err != nil || parsed.User != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	return strings.EqualFold(parsed.Host, r.Host)
+}
+
+func requestHasSameOrigin(r *http.Request) bool {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		return originMatchesRequestHost(origin, r)
+	}
+	return refererMatchesRequestHost(r.Referer(), r)
+}
+
+func stateChangingMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}
+
+func panelCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			if !originMatchesRequestHost(origin, r) {
+				http.Error(w, "cross-origin request denied", http.StatusForbidden)
+				return
+			}
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func requestIsHTTPS(r *http.Request) bool {
+	if r.TLS != nil || strings.EqualFold(r.URL.Scheme, "https") {
+		return true
+	}
+	return false
+}
+
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	if r.Body == nil {
+		return errors.New("empty body")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)
+	return json.NewDecoder(r.Body).Decode(dst)
+}
+
 type App struct {
-	db *DB
-	pm *ProxyManager
+	db           *DB
+	pm           *ProxyManager
+	loginLimiter *loginRateLimiter
+	setupToken   string
+	setupTokenMu sync.Mutex
 }
 
 func (a *App) jsonOK(w http.ResponseWriter, data interface{}) {
@@ -1512,16 +1836,80 @@ func (a *App) jsonErr(w http.ResponseWriter, status int, msg string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
+func (a *App) limiter() *loginRateLimiter {
+	if a.loginLimiter == nil {
+		a.loginLimiter = newLoginRateLimiter()
+	}
+	return a.loginLimiter
+}
+
+func (a *App) authRateLimitErr(w http.ResponseWriter, msg string, retryAfter time.Duration) {
+	seconds := int(retryAfter / time.Second)
+	if retryAfter%time.Second != 0 {
+		seconds++
+	}
+	if seconds < 1 {
+		seconds = 1
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(seconds))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error":               msg,
+		"retry_after_seconds": seconds,
+	})
+}
+
+func (a *App) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    token,
+		Path:     "/",
+		Expires:  time.Now().Add(sessionDuration),
+		MaxAge:   int(sessionDuration.Seconds()),
+		Secure:   requestIsHTTPS(r),
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func (a *App) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(1, 0),
+		MaxAge:   -1,
+		Secure:   requestIsHTTPS(r),
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func sessionTokenFromRequest(r *http.Request) (token string, viaCookie bool) {
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer ")), false
+	}
+	if c, err := r.Cookie(sessionCookieName); err == nil && c.Value != "" {
+		return c.Value, true
+	}
+	return "", false
+}
+
 func (a *App) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
-			a.jsonErr(w, 401, "missing bearer token")
+		token, viaCookie := sessionTokenFromRequest(r)
+		if token == "" {
+			a.jsonErr(w, 401, "missing session")
 			return
 		}
-		_, _, err := validateToken(strings.TrimPrefix(auth, "Bearer "))
-		if err != nil {
+		if _, _, err := validateToken(token); err != nil {
 			a.jsonErr(w, 401, "token expired or invalid")
+			return
+		}
+		if viaCookie && stateChangingMethod(r.Method) && !requestHasSameOrigin(r) {
+			a.jsonErr(w, 403, "same-origin request required")
 			return
 		}
 		next(w, r)
@@ -1534,29 +1922,58 @@ func (a *App) handleSetup(w http.ResponseWriter, r *http.Request) {
 		a.jsonErr(w, 405, "method not allowed")
 		return
 	}
+	client := requestClientKey(r)
+	if allowed, retryAfter := a.limiter().allow(client, time.Now()); !allowed {
+		a.authRateLimitErr(w, "too many setup attempts; try again later", retryAfter)
+		return
+	}
+	a.setupTokenMu.Lock()
+	defer a.setupTokenMu.Unlock()
 	if a.db.UserCount() > 0 {
 		a.jsonErr(w, 400, "admin user already exists")
 		return
 	}
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Username   string `json:"username"`
+		Password   string `json:"password"`
+		SetupToken string `json:"setup_token"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" || len(req.Password) < 6 {
-		a.jsonErr(w, 400, "username is required and password must be at least 6 characters")
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		a.jsonErr(w, 400, "invalid request")
 		return
 	}
-	id, err := a.db.CreateUser(req.Username, req.Password)
+	req.Username = strings.TrimSpace(req.Username)
+	if req.Username == "" || len(req.Username) > maxAdminUsernameChars || len(req.Password) < minAdminPasswordBytes || len(req.Password) > maxAdminPasswordBytes {
+		a.jsonErr(w, 400, "username must be 1-64 characters and password must be 12-72 bytes")
+		return
+	}
+	if a.setupToken == "" || !setupTokenMatches(a.setupToken, req.SetupToken) {
+		if blocked, retryAfter := a.limiter().recordFailure(client, time.Now()); blocked {
+			a.authRateLimitErr(w, "too many setup attempts; try again later", retryAfter)
+			return
+		}
+		a.jsonErr(w, http.StatusForbidden, "invalid setup token")
+		return
+	}
+	id, err := a.db.CreateInitialUser(req.Username, req.Password)
 	if err != nil {
-		a.jsonErr(w, 500, err.Error())
+		if errors.Is(err, errAdminAlreadyExists) {
+			a.jsonErr(w, http.StatusConflict, errAdminAlreadyExists.Error())
+			return
+		}
+		a.jsonErr(w, 500, "unable to create admin user")
 		return
 	}
+	a.limiter().reset(client)
 	token, err := generateToken(id, req.Username)
 	if err != nil {
 		a.jsonErr(w, 500, err.Error())
 		return
 	}
-	a.jsonOK(w, map[string]interface{}{"token": token, "username": req.Username})
+	a.setupToken = ""
+	w.Header().Set("Cache-Control", "no-store")
+	a.setSessionCookie(w, r, token)
+	a.jsonOK(w, map[string]interface{}{"username": req.Username})
 }
 
 // POST /api/auth/login
@@ -1569,29 +1986,81 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	client := requestClientKey(r)
+	if allowed, retryAfter := a.limiter().allow(client, time.Now()); !allowed {
+		a.authRateLimitErr(w, "too many login attempts; try again later", retryAfter)
+		return
+	}
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		if blocked, retryAfter := a.limiter().recordFailure(client, time.Now()); blocked {
+			a.authRateLimitErr(w, "too many login attempts; try again later", retryAfter)
+			return
+		}
 		a.jsonErr(w, 400, "invalid request")
 		return
 	}
-	id, err := a.db.VerifyUser(req.Username, req.Password)
-	if err != nil {
-		a.jsonErr(w, 401, err.Error())
+	username := strings.TrimSpace(req.Username)
+	if username == "" || len(username) > maxAdminUsernameChars || req.Password == "" || len(req.Password) > maxAdminPasswordBytes {
+		if blocked, retryAfter := a.limiter().recordFailure(client, time.Now()); blocked {
+			a.authRateLimitErr(w, "too many login attempts; try again later", retryAfter)
+			return
+		}
+		a.jsonErr(w, http.StatusUnauthorized, "用户名或密码错误")
 		return
 	}
-	token, err := generateToken(id, req.Username)
+	id, err := a.db.VerifyUser(username, req.Password)
+	if err != nil {
+		blocked, retryAfter := a.limiter().recordFailure(client, time.Now())
+		if blocked {
+			a.authRateLimitErr(w, "too many login attempts; try again later", retryAfter)
+			return
+		}
+		a.jsonErr(w, http.StatusUnauthorized, "用户名或密码错误")
+		return
+	}
+	a.limiter().reset(client)
+	token, err := generateToken(id, username)
 	if err != nil {
 		a.jsonErr(w, 500, err.Error())
 		return
 	}
-	a.jsonOK(w, map[string]interface{}{"token": token, "username": req.Username})
+	w.Header().Set("Cache-Control", "no-store")
+	a.setSessionCookie(w, r, token)
+	a.jsonOK(w, map[string]interface{}{"username": username})
+}
+
+// POST /api/auth/logout
+func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		a.jsonErr(w, 405, "method not allowed")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	a.clearSessionCookie(w, r)
+	a.jsonOK(w, map[string]bool{"logged_out": true})
 }
 
 // GET /api/auth/check
 func (a *App) handleAuthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	needsSetup := a.db.UserCount() == 0
+	authenticated := false
+	username := ""
+	if !needsSetup {
+		if token, _ := sessionTokenFromRequest(r); token != "" {
+			if _, sessionUsername, err := validateToken(token); err == nil {
+				authenticated = true
+				username = sessionUsername
+			}
+		}
+	}
 	a.jsonOK(w, map[string]interface{}{
-		"needs_setup":          a.db.UserCount() == 0,
+		"needs_setup":          needsSetup,
 		"mode":                 "single_admin",
 		"jwt_secret_ephemeral": jwtSecretEphemeral,
+		"setup_token_required": needsSetup,
+		"authenticated":        authenticated,
+		"username":             username,
 	})
 }
 
@@ -1648,11 +2117,11 @@ func (a *App) handleSitesExport(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	out := map[string]interface{}{
-		"version": "meridian-v1",
+		"version": backupFormatVersion,
 		"sites":   records,
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", "attachment; filename=\"meridian_backup.json\"")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+backupDownloadName+"\"")
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(out)
@@ -1665,11 +2134,16 @@ func (a *App) handleSitesImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
+		Version   string             `json:"version"`
 		Overwrite bool               `json:"overwrite"`
 		Sites     []ExportSiteRecord `json:"sites"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := decodeJSONBody(w, r, &payload); err != nil {
 		a.jsonErr(w, 400, "invalid JSON: "+err.Error())
+		return
+	}
+	if !acceptedBackupVersion(payload.Version) {
+		a.jsonErr(w, 400, "unsupported backup version")
 		return
 	}
 	if len(payload.Sites) == 0 {
@@ -1743,7 +2217,7 @@ func (a *App) handleSites(w http.ResponseWriter, r *http.Request) {
 			Quota             int64    `json:"traffic_quota"`
 			SpeedLimit        int      `json:"speed_limit"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := decodeJSONBody(w, r, &req); err != nil {
 			a.jsonErr(w, 400, "invalid request")
 			return
 		}
@@ -1856,7 +2330,7 @@ func (a *App) handleSiteByID(w http.ResponseWriter, r *http.Request) {
 			Quota             int64     `json:"traffic_quota"`
 			SpeedLimit        int       `json:"speed_limit"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := decodeJSONBody(w, r, &req); err != nil {
 			a.jsonErr(w, 400, "invalid request")
 			return
 		}
@@ -1996,7 +2470,6 @@ func (a *App) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	flusher.Flush()
 
 	ticker := time.NewTicker(2 * time.Second)
@@ -2048,9 +2521,71 @@ func (a *App) sendSSEEvent(w http.ResponseWriter, flusher http.Flusher) {
 // 闂傚倸鍊搁崐椋庣矆娴ｅ搫顥氭い鎾卞灩绾惧潡鏌曢崼婵愭Ц缂佲偓婢舵劗鍙撻柛銉ｅ妿閳藉鏌ｉ妶澶岀暫闁哄矉绱曟禒锔炬嫚閹绘帒顫撻梻浣虹帛閹稿鎯勯鐐茶摕闁绘柨鍚嬮崵瀣亜閹哄棗浜炬繝寰枫倕袚缂佺粯鐩畷銊╊敊閸撗呭帨闂備礁鎼懟顖滅矓瑜版帒绠栨繝濠傚悩閻旂厧浼犻柛鏇炵仛缂嶅倿姊婚崒娆戭槮闁圭⒈鍋婇獮濠呯疀濞戞瑥浜楅梺璺ㄥ枔婵挳寮伴妷鈺傜叆闁绘柨鎼瓭缂備胶濮甸惄顖炲蓟閺囩喓绡€闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及閵夆晜鐓ラ柣鏂挎惈瀛濈紓浣哄У閻╊垶寮婚弴鐔虹瘈闊洦绋掗宥夋⒑缂佹绠栧┑鐐诧工椤繘宕崟顓熸闂佹悶鍎滈崘顭戠€遍梻鍌欑閹诧繝寮婚妸褎宕叉俊顖欒閸ゆ洟鏌＄仦璇插姎闁藉啰鍠栭弻鏇熷緞閸繂濮㈤梺鍛娚戦幃鍌氼潖閾忚鍏滈柛娑卞幘閸旂兘姊洪崨濠冪叆缂佸鎸抽崺銏狀吋閸滀胶鍙嗛梺鍓插亞閸犳捇宕㈤幘缁樷拺缂備焦锚閻忥箓鏌ㄥ顑芥斀妞ゆ梻鎳撴禍楣冩⒒閸屾瑧顦﹂柟纰卞亰楠炲﹨绠涘☉娆忎簵闂佽法鍠撴慨鎾及?
 var startTime = time.Now()
 
-func main() {
+func runCommandLine(args []string) (bool, error) {
+	if len(args) == 0 {
+		return false, nil
+	}
+	switch args[0] {
+	case "--version", "-v":
+		if len(args) != 1 {
+			return true, errors.New("version command does not accept arguments")
+		}
+		fmt.Println(appVersion)
+		return true, nil
+	case "--healthcheck":
+		if len(args) != 1 {
+			return true, errors.New("healthcheck command does not accept arguments")
+		}
+		return true, runHealthcheckCommand()
+	default:
+		return false, nil
+	}
+}
+
+func runHealthcheckCommand() error {
 	port := 9090
-	dbPath := "meridian.db"
+	if v := os.Getenv("PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			port = p
+		}
+	}
+	client := &http.Client{
+		Timeout: 4 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	var lastErr error
+	for _, host := range []string{"127.0.0.1", "::1"} {
+		endpoint := fmt.Sprintf("http://%s/api/auth/check", net.JoinHostPort(host, strconv.Itoa(port)))
+		resp, err := client.Get(endpoint)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		closeErr := resp.Body.Close()
+		if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices && closeErr == nil {
+			return nil
+		}
+		lastErr = fmt.Errorf("%s returned HTTP %d", endpoint, resp.StatusCode)
+	}
+	if lastErr == nil {
+		lastErr = errors.New("no loopback endpoints probed")
+	}
+	return fmt.Errorf("panel healthcheck failed: %w", lastErr)
+}
+
+func main() {
+	if handled, err := runCommandLine(os.Args[1:]); handled {
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	port := 9090
+	dbPath := resolveDefaultDBPath()
 	if jwtSecretEphemeral {
 		log.Printf("JWT_SECRET not set; generated an ephemeral signing secret for this process. Set JWT_SECRET explicitly for stable sessions.")
 	}
@@ -2064,7 +2599,6 @@ func main() {
 		dbPath = v
 	}
 
-	// Command line args
 	for i, arg := range os.Args[1:] {
 		switch arg {
 		case "--port", "-p":
@@ -2080,16 +2614,32 @@ func main() {
 		}
 	}
 
+	bindAddr := strings.TrimSpace(os.Getenv("PANEL_BIND_ADDR"))
+	addr, err := panelListenAddr(bindAddr, port)
+	if err != nil {
+		log.Fatalf("invalid panel listen address: %v", err)
+	}
+	if !panelBindIsLoopback(bindAddr) && !envBool("ALLOW_INSECURE_HTTP") {
+		log.Fatalf("refusing to expose the management panel over plain HTTP on %s; set ALLOW_INSECURE_HTTP=true only for a deliberate temporary compatibility deployment, or bind PANEL_BIND_ADDR=127.0.0.1 behind an HTTPS reverse proxy", bindAddr)
+	}
+
 	db, err := openDB(dbPath)
 	if err != nil {
-		log.Fatalf("闂傚倸鍊搁崐宄懊归崶褜娴栭柕濞炬櫆閸ゅ嫰鏌ょ粙璺ㄤ粵婵炲懐濮垫穱濠囧Χ閸屾矮澹曢梻浣风串缁蹭粙鎮樺璺虹闁告侗鍨遍崰鍡涙煕閺囥劌浜滃┑鈩冨▕濮婄粯鎷呯粵瀣秷闂佺瀛╂繛濠傜暦椤栫偛閿ゆ俊銈勭閳ь剙鐖奸弻鏇熷緞閸繂濮夐梺琛″亾闁兼亽鍎禍婊堟煛閸愩劌鈧敻骞忛敓鐘崇厱閹艰揪绱曠粻濠氭煙椤旂瓔娈滄俊顐㈠暙閳藉螣婵傚摜宕滈梺璇查閻忔艾顭垮Ο灏栧亾濮樼厧骞栨い顓炴穿缁犳稑鈽夋潏銊︽珖闂? %v", err)
+		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
+
+	setupToken, setupGenerated, err := resolveSetupToken(db.UserCount(), os.Getenv("SETUP_TOKEN"))
+	if err != nil {
+		log.Fatalf("initial setup unavailable: %v", err)
+	}
+	if setupGenerated {
+		log.Printf("SETUP_TOKEN not set; generated %s — pass this token when creating the first administrator", setupToken)
+	}
 
 	pm := NewProxyManager(db)
 	pm.StartAllEnabled()
 
-	// Traffic flush goroutine with context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2106,43 +2656,27 @@ func main() {
 		}
 	}()
 
-	app := &App{db: db, pm: pm}
+	app := &App{db: db, pm: pm, loginLimiter: newLoginRateLimiter(), setupToken: setupToken}
 
 	mux := http.NewServeMux()
 
-	// CORS middleware wrapper
-	cors := func(h http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization")
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(204)
-				return
-			}
-			h(w, r)
-		}
-	}
+	mux.HandleFunc("/api/auth/setup", panelCORS(app.handleSetup))
+	mux.HandleFunc("/api/auth/login", panelCORS(app.handleLogin))
+	mux.HandleFunc("/api/auth/logout", panelCORS(app.handleLogout))
+	mux.HandleFunc("/api/auth/check", panelCORS(app.handleAuthCheck))
 
-	// Public auth routes
-	mux.HandleFunc("/api/auth/setup", cors(app.handleSetup))
-	mux.HandleFunc("/api/auth/login", cors(app.handleLogin))
-	mux.HandleFunc("/api/auth/check", cors(app.handleAuthCheck))
+	mux.HandleFunc("/api/dashboard", panelCORS(app.authMiddleware(app.handleDashboard)))
+	mux.HandleFunc("/api/sites", panelCORS(app.authMiddleware(app.handleSites)))
+	mux.HandleFunc("/api/sites/export", panelCORS(app.authMiddleware(app.handleSitesExport)))
+	mux.HandleFunc("/api/sites/import", panelCORS(app.authMiddleware(app.handleSitesImport)))
+	mux.HandleFunc("/api/sites/", panelCORS(app.authMiddleware(app.handleSiteByID)))
+	mux.HandleFunc("/api/traffic/", panelCORS(app.authMiddleware(app.handleTraffic)))
+	mux.HandleFunc("/api/ua-profiles", panelCORS(app.authMiddleware(app.handleUAProfiles)))
+	mux.HandleFunc("/api/events", panelCORS(app.authMiddleware(app.handleSSE)))
 
-	// Protected routes
-	mux.HandleFunc("/api/dashboard", cors(app.authMiddleware(app.handleDashboard)))
-	mux.HandleFunc("/api/sites", cors(app.authMiddleware(app.handleSites)))
-	mux.HandleFunc("/api/sites/export", cors(app.authMiddleware(app.handleSitesExport)))
-	mux.HandleFunc("/api/sites/import", cors(app.authMiddleware(app.handleSitesImport)))
-	mux.HandleFunc("/api/sites/", cors(app.authMiddleware(app.handleSiteByID)))
-	mux.HandleFunc("/api/traffic/", cors(app.authMiddleware(app.handleTraffic)))
-	mux.HandleFunc("/api/ua-profiles", cors(app.authMiddleware(app.handleUAProfiles)))
-	mux.HandleFunc("/api/events", cors(app.authMiddleware(app.handleSSE)))
-
-	// Embedded static files
 	staticFS, err := fs.Sub(web.StaticFiles, "static")
 	if err != nil {
-		log.Fatalf("闂傚倷娴囬褍顫濋敃鍌︾稏濠㈣埖鍔曠粻浼存煙闂傚鍔嶉柛銈嗗姈閵囧嫰寮介顫捕闂佹椿鍘介〃濠囧蓟濞戙垹鐒洪柛鎰典簴濡插牆鈹戦埥鍡椾簼闁挎洏鍨藉璇测槈閵忕姈銊︺亜閺嶎偄浠︽い搴＄Т椤啴濡堕崱妤€顫堢紓渚囧枟閻熲晛顕ｇ拠娴嬫闁靛繒濮烽惈鍕⒑缁嬫寧婀版い鏇熸尦椤㈡鎷呴搹璇″晭闂備礁鎼ˇ浼村垂閼搁潧绶為柛鏇ㄥ幐閸嬫捇宕归锝囧嚒闁诲孩鍑归崢濂糕€﹂崶顏嗙杸婵炴垼椴搁弲婵嬫⒑? %v", err)
+		log.Fatalf("failed to load embedded static files: %v", err)
 	}
 	fileServer := http.FileServer(http.FS(staticFS))
 
@@ -2161,24 +2695,22 @@ func main() {
 		fileServer.ServeHTTP(w, r)
 	})
 
-	// HTTP server with graceful shutdown
-	addr := fmt.Sprintf(":%d", port)
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      mux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 0, // no write timeout for streaming
-		IdleTimeout:  120 * time.Second,
+		Addr:              addr,
+		Handler:           securityHeaders(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      0,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	log.Println("============================================================")
-	log.Println("  Meridian - Emby reverse proxy management panel v1.3.1")
-	log.Printf("  Listening on: http://0.0.0.0%s", addr)
+	log.Printf("  StreamDock - Emby reverse proxy management panel %s", appVersion)
+	log.Printf("  Listening on: http://%s", addr)
 	log.Printf("  Sites loaded: %d (%d running)", func() int { s, _ := db.ListSites(); return len(s) }(), pm.GetRunningCount())
 	log.Println("  Features: WebSocket proxy, TLS diagnostics, traffic limits")
 	log.Println("============================================================")
 
-	// Signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
@@ -2189,17 +2721,35 @@ func main() {
 	}()
 
 	<-sigCh
-	log.Println("\nReceived shutdown signal, stopping Meridian...")
+	log.Println("\nReceived shutdown signal, stopping StreamDock...")
 
-	// Cancel background goroutines
 	cancel()
 
-	// Shutdown proxies (flushes traffic)
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
 	pm.GracefulShutdown(shutdownCtx)
 	srv.Shutdown(shutdownCtx)
 
-	log.Println("Meridian stopped cleanly")
+	log.Println("StreamDock stopped cleanly")
+}
+
+func resolveDefaultDBPath() string {
+	if _, err := os.Stat(defaultDBFile); err == nil {
+		return defaultDBFile
+	}
+	if _, err := os.Stat(legacyDBFile); err == nil {
+		log.Printf("using legacy database %s; new default is %s", legacyDBFile, defaultDBFile)
+		return legacyDBFile
+	}
+	return defaultDBFile
+}
+
+func acceptedBackupVersion(v string) bool {
+	switch strings.TrimSpace(v) {
+	case "", backupFormatVersion, legacyBackupVersion:
+		return true
+	default:
+		return false
+	}
 }

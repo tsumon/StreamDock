@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -755,6 +757,350 @@ func TestProxyRoutesPlaybackRequestsToPlaybackTarget(t *testing.T) {
 	}
 	if body := mustReadBody(t, playbackResp); !strings.Contains(body, "playback:/emby/Videos/123/stream") {
 		t.Fatalf("playback route body = %q", body)
+	}
+}
+
+func TestDockerfileAndReleaseDoNotPushUpstreamImage(t *testing.T) {
+	dockerfile, err := os.ReadFile("Dockerfile")
+	if err != nil {
+		t.Fatalf("read Dockerfile: %v", err)
+	}
+	if !bytes.Contains(dockerfile, []byte("adduser -S -D -H -u 10001")) {
+		t.Fatal("Dockerfile must create non-root uid 10001")
+	}
+	if !bytes.Contains(dockerfile, []byte(`CMD ["/app/streamdock", "--healthcheck"]`)) {
+		t.Fatal("Dockerfile must HEALTHCHECK via --healthcheck")
+	}
+	if bytes.Contains(dockerfile, []byte("snnabb")) {
+		t.Fatal("Dockerfile must not reference snnabb")
+	}
+
+	release, err := os.ReadFile(".github/workflows/release.yml")
+	if err != nil {
+		t.Fatalf("read release.yml: %v", err)
+	}
+	if bytes.Contains(release, []byte("ghcr.io/snnabb/meridian")) {
+		t.Fatal("release.yml must not push to ghcr.io/snnabb/meridian")
+	}
+	if !bytes.Contains(release, []byte("ghcr.io/tsumon/streamdock")) {
+		t.Fatal("release.yml must push ghcr.io/tsumon/streamdock")
+	}
+	if bytes.Contains(release, []byte("ghcr.io/tsumon/meridian-merged")) {
+		t.Fatal("release.yml must not push ghcr.io/tsumon/meridian-merged")
+	}
+
+	ci, err := os.ReadFile(".github/workflows/ci.yml")
+	if err != nil {
+		t.Fatalf("read ci.yml: %v", err)
+	}
+	if !bytes.Contains(ci, []byte("branches: ['main']")) {
+		t.Fatal("ci.yml must listen on main")
+	}
+}
+
+func TestResolveJWTSecretRejectsShortValue(t *testing.T) {
+	if _, _, err := resolveJWTSecret("short"); err == nil {
+		t.Fatal("expected short JWT_SECRET to be rejected")
+	}
+}
+
+func TestPanelListenAddrDefaultsToLoopback(t *testing.T) {
+	addr, err := panelListenAddr("", 9090)
+	if err != nil {
+		t.Fatalf("panelListenAddr: %v", err)
+	}
+	if addr != "127.0.0.1:9090" {
+		t.Fatalf("addr = %q, want 127.0.0.1:9090", addr)
+	}
+	if !panelBindIsLoopback("") || !panelBindIsLoopback("127.0.0.1") {
+		t.Fatal("empty and 127.0.0.1 should be loopback")
+	}
+	if panelBindIsLoopback("0.0.0.0") {
+		t.Fatal("0.0.0.0 must not be treated as loopback")
+	}
+}
+
+func TestPanelCORSRejectsCrossOrigin(t *testing.T) {
+	handler := panelCORS(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	req := httptest.NewRequest(http.MethodGet, "http://panel.example/api/auth/check", nil)
+	req.Host = "panel.example"
+	req.Header.Set("Origin", "https://evil.example")
+	rr := httptest.NewRecorder()
+	handler(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rr.Code)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got == "*" || got != "" {
+		t.Fatalf("Allow-Origin = %q, want empty", got)
+	}
+}
+
+func TestPanelCORSAllowsSameOrigin(t *testing.T) {
+	handler := panelCORS(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	req := httptest.NewRequest(http.MethodGet, "http://panel.example/api/auth/check", nil)
+	req.Host = "panel.example"
+	req.Header.Set("Origin", "http://panel.example")
+	rr := httptest.NewRecorder()
+	handler(rr, req)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rr.Code)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "http://panel.example" {
+		t.Fatalf("Allow-Origin = %q", got)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got == "*" {
+		t.Fatal("must not allow *")
+	}
+}
+
+func TestHandleSetupRequiresTokenAndSetsHttpOnlyCookie(t *testing.T) {
+	app := newTestApp(t)
+	app.setupToken = "test-setup-token-must-be-32-bytes-ok"
+	jwtSecret = []byte("test-secret-for-cookie-session-ok")
+
+	missing := httptest.NewRecorder()
+	app.handleSetup(missing, httptest.NewRequest(http.MethodPost, "/api/auth/setup", strings.NewReader(`{
+		"username":"admin","password":"correct horse","setup_token":"wrong"
+	}`)))
+	if missing.Code != http.StatusForbidden {
+		t.Fatalf("wrong token status = %d body=%s", missing.Code, missing.Body.String())
+	}
+
+	ok := httptest.NewRecorder()
+	app.handleSetup(ok, httptest.NewRequest(http.MethodPost, "/api/auth/setup", strings.NewReader(`{
+		"username":"admin","password":"correct horse","setup_token":"test-setup-token-must-be-32-bytes-ok"
+	}`)))
+	if ok.Code != http.StatusOK {
+		t.Fatalf("setup status = %d body=%s", ok.Code, ok.Body.String())
+	}
+	body := decodeBody(t, ok)
+	if _, exists := body["token"]; exists {
+		t.Fatal("setup JSON must not include a stealable token")
+	}
+	cookies := ok.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != sessionCookieName || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteStrictMode {
+		t.Fatalf("session cookie = %#v", cookies)
+	}
+}
+
+func TestCreateInitialUserRejectsSecondAdmin(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.CreateInitialUser("admin", "correct horse"); err != nil {
+		t.Fatalf("first admin: %v", err)
+	}
+	if _, err := app.db.CreateInitialUser("other", "correct horse"); !errors.Is(err, errAdminAlreadyExists) {
+		t.Fatalf("second admin err = %v, want errAdminAlreadyExists", err)
+	}
+}
+
+func TestHandleLoginRateLimit(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.CreateUser("admin", "correct horse"); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	body := `{"username":"admin","password":"wrong-password"}`
+	var last *httptest.ResponseRecorder
+	for i := 0; i < maxLoginFailures; i++ {
+		last = httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+		req.RemoteAddr = "198.51.100.10:12345"
+		app.handleLogin(last, req)
+	}
+	if last.Code != http.StatusTooManyRequests {
+		t.Fatalf("after %d failures status = %d body=%s", maxLoginFailures, last.Code, last.Body.String())
+	}
+	if last.Header().Get("Retry-After") == "" {
+		t.Fatal("missing Retry-After")
+	}
+}
+
+func TestHandleSitesExportImportAndPortConflictSkip(t *testing.T) {
+	app := newTestApp(t)
+	port := freePort(t)
+	if _, err := app.db.CreateSite("alpha", port, "http://127.0.0.1:8096", "https://cdn.example.com", "direct", `["https://node2.example.com"]`, "infuse", 0, 0); err != nil {
+		t.Fatalf("CreateSite: %v", err)
+	}
+
+	exportRR := httptest.NewRecorder()
+	app.handleSitesExport(exportRR, httptest.NewRequest(http.MethodGet, "/api/sites/export", nil))
+	if exportRR.Code != http.StatusOK {
+		t.Fatalf("export status = %d body=%s", exportRR.Code, exportRR.Body.String())
+	}
+	var exported map[string]interface{}
+	if err := json.Unmarshal(exportRR.Body.Bytes(), &exported); err != nil {
+		t.Fatalf("decode export: %v", err)
+	}
+	if exported["version"] != backupFormatVersion {
+		t.Fatalf("version = %v, want %s", exported["version"], backupFormatVersion)
+	}
+
+	conflict := httptest.NewRecorder()
+	app.handleSitesImport(conflict, httptest.NewRequest(http.MethodPost, "/api/sites/import", bytes.NewReader(exportRR.Body.Bytes())))
+	if conflict.Code != http.StatusOK {
+		t.Fatalf("conflict import status = %d body=%s", conflict.Code, conflict.Body.String())
+	}
+	conflictBody := decodeBody(t, conflict)
+	if mustNumberValue(t, conflictBody, "created") != 0 || mustNumberValue(t, conflictBody, "skipped") != 1 {
+		t.Fatalf("port conflict import = %#v, want created=0 skipped=1", conflictBody)
+	}
+
+	fresh := newTestApp(t)
+	created := httptest.NewRecorder()
+	fresh.handleSitesImport(created, httptest.NewRequest(http.MethodPost, "/api/sites/import", bytes.NewReader(exportRR.Body.Bytes())))
+	if created.Code != http.StatusOK {
+		t.Fatalf("fresh import status = %d body=%s", created.Code, created.Body.String())
+	}
+	createdBody := decodeBody(t, created)
+	if mustNumberValue(t, createdBody, "created") != 1 {
+		t.Fatalf("fresh import = %#v, want created=1", createdBody)
+	}
+	sites, err := fresh.db.ListSites()
+	if err != nil {
+		t.Fatalf("ListSites: %v", err)
+	}
+	if len(sites) != 1 || sites[0].Name != "alpha" || sites[0].PlaybackTargetURL != "https://cdn.example.com" {
+		t.Fatalf("imported site = %#v", sites)
+	}
+}
+
+func TestResolveDefaultDBPathUsesLegacyWhenPresent(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	if got := resolveDefaultDBPath(); got != defaultDBFile {
+		t.Fatalf("empty dir = %q, want %s", got, defaultDBFile)
+	}
+
+	if err := os.WriteFile(legacyDBFile, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveDefaultDBPath(); got != legacyDBFile {
+		t.Fatalf("legacy only = %q, want %s", got, legacyDBFile)
+	}
+
+	if err := os.WriteFile(defaultDBFile, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveDefaultDBPath(); got != defaultDBFile {
+		t.Fatalf("both present = %q, want %s", got, defaultDBFile)
+	}
+}
+
+func TestHandleSitesImportAcceptsLegacyMeridianV1(t *testing.T) {
+	app := newTestApp(t)
+	port := freePort(t)
+	body := fmt.Sprintf(`{
+		"version": "meridian-v1",
+		"sites": [{
+			"name": "legacy",
+			"listen_port": %d,
+			"target_url": "http://127.0.0.1:8096",
+			"playback_target_url": "https://cdn.example.com",
+			"playback_mode": "direct",
+			"stream_hosts": [],
+			"ua_mode": "infuse",
+			"traffic_quota": 0,
+			"speed_limit": 0
+		}]
+	}`, port)
+	rr := httptest.NewRecorder()
+	app.handleSitesImport(rr, httptest.NewRequest(http.MethodPost, "/api/sites/import", strings.NewReader(body)))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("legacy import status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	got := decodeBody(t, rr)
+	if mustNumberValue(t, got, "created") != 1 {
+		t.Fatalf("legacy import = %#v, want created=1", got)
+	}
+}
+
+func TestHandleSitesImportRejectsUnknownVersion(t *testing.T) {
+	app := newTestApp(t)
+	rr := httptest.NewRecorder()
+	app.handleSitesImport(rr, httptest.NewRequest(http.MethodPost, "/api/sites/import", strings.NewReader(`{
+		"version": "unknown-v9",
+		"sites": [{"name":"x","listen_port":18001,"target_url":"http://127.0.0.1:8096"}]
+	}`)))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("unknown version status = %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleSitesImportRejectsBadJSON(t *testing.T) {
+	app := newTestApp(t)
+	rr := httptest.NewRecorder()
+	app.handleSitesImport(rr, httptest.NewRequest(http.MethodPost, "/api/sites/import", strings.NewReader(`{not json`)))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestAuthMiddlewareAcceptsSessionCookie(t *testing.T) {
+	app := newTestApp(t)
+	jwtSecret = []byte("test-secret-for-cookie-session-ok")
+	token, err := generateToken(1, "admin")
+	if err != nil {
+		t.Fatalf("generateToken: %v", err)
+	}
+	called := false
+	handler := app.authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/dashboard", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	rr := httptest.NewRecorder()
+	handler(rr, req)
+	if !called || rr.Code != http.StatusNoContent {
+		t.Fatalf("cookie auth called=%v status=%d", called, rr.Code)
+	}
+}
+
+func TestProxyPreservesUpstreamSecurityHeaders(t *testing.T) {
+	app := newTestApp(t)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'")
+		w.Write([]byte("ok"))
+	}))
+	defer upstream.Close()
+
+	site, err := app.db.CreateSite("headers", freePort(t), upstream.URL, "", "direct", "[]", "infuse", 0, 0)
+	if err != nil {
+		t.Fatalf("CreateSite: %v", err)
+	}
+	if err := app.pm.StartSite(*site); err != nil {
+		t.Fatalf("StartSite: %v", err)
+	}
+	t.Cleanup(func() { app.pm.StopSite(site.ID) })
+
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/System/Info", site.ListenPort))
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if got := resp.Header.Get("X-Frame-Options"); got != "SAMEORIGIN" {
+		t.Fatalf("X-Frame-Options = %q, want SAMEORIGIN", got)
+	}
+	if got := resp.Header.Get("Content-Security-Policy"); got != "default-src 'self'" {
+		t.Fatalf("CSP = %q", got)
+	}
+}
+
+func TestHandleAuthCheckReportsSetupTokenRequired(t *testing.T) {
+	app := newTestApp(t)
+	rr := httptest.NewRecorder()
+	app.handleAuthCheck(rr, httptest.NewRequest(http.MethodGet, "/api/auth/check", nil))
+	body := decodeBody(t, rr)
+	if !mustBoolValue(t, body, "setup_token_required") {
+		t.Fatal("setup_token_required want true")
+	}
+	if mustBoolValue(t, body, "authenticated") {
+		t.Fatal("authenticated want false")
 	}
 }
 

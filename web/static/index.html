@@ -3,44 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meridian — Emby 反代管理面板</title>
-<meta name="description" content="Meridian 轻量级 Emby 反向代理管理面板">
+<title>StreamDock — Emby 反代管理面板</title>
+<meta name="description" content="StreamDock 轻量级 Emby 反向代理管理面板">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+
+<a class="skip-link" href="#main">跳到内容</a>
 
 <!-- Login Page -->
 <div id="page-login">
   <div class="login-card">
     <div class="login-brand">
-      <h1>Meridian</h1>
+      <h1>StreamDock</h1>
       <p>Emby 反代管理面板</p>
     </div>
-    <form id="loginForm">
+    <form id="loginForm" novalidate>
       <div class="form-group">
-        <label>用户名</label>
-        <input type="text" class="form-input" id="inp-username" placeholder="admin" autocomplete="username" required>
+        <label for="inp-username">用户名</label>
+        <input type="text" class="form-input" id="inp-username" name="username" placeholder="admin" autocomplete="username" required>
       </div>
       <div class="form-group">
-        <label>密码</label>
-        <input type="password" class="form-input" id="inp-password" placeholder="••••••••" autocomplete="current-password" required>
+        <label for="inp-password">密码</label>
+        <input type="password" class="form-input" id="inp-password" name="password" placeholder="至少 12 位" autocomplete="current-password" required minlength="12">
+      </div>
+      <div class="form-group" id="setup-token-group" hidden>
+        <label for="inp-setup-token">初始化令牌</label>
+        <input type="password" class="form-input" id="inp-setup-token" name="setup_token" placeholder="SETUP_TOKEN" autocomplete="off">
+        <p class="login-note" style="margin-top:6px">首次安装时写在启动日志或 <code>.env</code> 的 <code>SETUP_TOKEN</code>。</p>
       </div>
       <button type="submit" class="btn-login" id="btn-login">登录</button>
     </form>
-    <div class="login-footer" id="login-footer">正在检查初始化状态...</div>
+    <div class="login-footer" id="login-footer">正在检查初始化状态…</div>
   </div>
 </div>
 
 <!-- App Shell -->
 <div id="app-shell">
 
-  <!-- Top Navigation -->
-  <nav class="topnav">
-    <div class="topnav-brand"><img src="/favicon.svg" alt="" class="topnav-logo">Meridian</div>
+  <nav class="topnav" aria-label="主导航">
+    <div class="topnav-brand"><img src="/favicon.svg" alt="" class="topnav-logo">StreamDock</div>
     <div class="topnav-links">
       <a href="#dashboard" class="topnav-link active" data-page="dashboard">仪表盘</a>
       <a href="#sites" class="topnav-link" data-page="sites">站点管理</a>
@@ -48,54 +54,56 @@
       <a href="#diagnostics" class="topnav-link" data-page="diagnostics">故障诊断</a>
     </div>
     <div class="topnav-right">
-      <button class="avatar-btn" id="avatar-btn">A</button>
+      <div class="account-menu">
+        <button type="button" class="avatar-btn" id="avatar-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="account-panel" aria-label="账户菜单">A</button>
+        <div class="account-panel" id="account-panel" role="menu" hidden>
+          <div class="account-name" id="account-name"></div>
+          <button type="button" class="btn-ghost" id="btn-logout" role="menuitem">退出登录</button>
+        </div>
+      </div>
     </div>
   </nav>
 
-  <!-- Main Area -->
-  <div class="main">
+  <div class="main" id="main" tabindex="-1">
     <div id="page-dashboard" class="page active"></div>
     <div id="page-sites" class="page"></div>
     <div id="page-traffic" class="page"></div>
     <div id="page-diagnostics" class="page"></div>
   </div>
 
-  <!-- Mobile Bottom Bar -->
-  <nav class="mobile-bar">
+  <nav class="mobile-bar" aria-label="移动导航">
     <div class="mobile-bar-inner">
       <a href="#dashboard" class="mobile-tab active" data-page="dashboard">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         仪表盘
       </a>
       <a href="#sites" class="mobile-tab" data-page="sites">
-        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         站点
       </a>
       <a href="#traffic" class="mobile-tab" data-page="traffic">
-        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         流量
       </a>
       <a href="#diagnostics" class="mobile-tab" data-page="diagnostics">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         诊断
       </a>
     </div>
   </nav>
 
-  <!-- Modal -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal" id="modal">
+  <dialog class="modal-dialog" id="modal" aria-labelledby="modal-title">
+    <div class="modal">
       <div class="modal-header">
         <h3 id="modal-title"></h3>
-        <button class="modal-close" id="modal-close">✕</button>
+        <button type="button" class="modal-close" id="modal-close" aria-label="关闭">✕</button>
       </div>
       <div class="modal-body" id="modal-body"></div>
       <div class="modal-footer" id="modal-footer"></div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Toast -->
-  <div id="toast-container"></div>
+  <div id="toast-container" aria-live="polite" aria-relevant="additions"></div>
 
 </div>
 

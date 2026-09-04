@@ -1,312 +1,157 @@
-<div align="center">
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="StreamDock：单二进制 Emby 反代管理面板。明文导入导出站点，独立流量页。GitHub 仓库是 tsumon/StreamDock。">
+</p>
 
-# Meridian-Merged
+<p align="center">
+  <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&amp;logoColor=white" alt="Go 1.26+"></a>
+  <a href="https://pkg.go.dev/modernc.org/sqlite"><img src="https://img.shields.io/badge/SQLite-embedded-003B57?logo=sqlite&amp;logoColor=white" alt="Embedded SQLite"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
+</p>
 
-基于 [Meridian](https://github.com/snnabb/Meridian) 的增强版 Emby 反向代理管理面板
+**StreamDock** 是一个单二进制 Emby 反向代理管理面板：浏览器里管站点，SQLite 落盘，前端嵌在同一个进程里。
 
-融合了分离版推流 + 配置导出/导入功能
-
-[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![SQLite](https://img.shields.io/badge/SQLite-embedded-003B57?logo=sqlite&logoColor=white)](https://pkg.go.dev/modernc.org/sqlite)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-</div>
-
----
-
-## 这是什么
-
-本项目在 **Meridian** 原版基础上，融合了 Cloudflare Worker 反代面板的核心功能，保持 Meridian 的 Go 单二进制架构不变，新增了：
-
-- ✅ **分离版推流**（`playback_target_url` + `stream_hosts` 多节点配置）
-- ✅ **配置导出**（一键下载全站点 JSON 备份）
-- ✅ **配置导入**（从备份文件批量还原站点）
+GitHub 仓库是 [`tsumon/StreamDock`](https://github.com/tsumon/StreamDock)。仓库与产品名均为 StreamDock。
 
 ---
 
-## 界面预览
+## 面板长什么样
 
-| 仪表盘 | 站点管理 | 故障诊断 |
-|:---:|:---:|:---:|
-| ![仪表盘](docs/dashboard.png) | ![站点管理](docs/sites.png) | ![故障诊断](docs/diagnostics.png) |
+四张图来自当前面板，不是示意稿。顶栏字标还是截图时的旧名；HTML 标题、登录页和导航现在显示 **StreamDock**。
+
+| 仪表盘 | 站点 | 流量 | 诊断 |
+|:---:|:---:|:---:|:---:|
+| ![仪表盘：站点状态与运行摘要](docs/dashboard.png) | ![站点管理：反代与播放回源](docs/sites.png) | ![独立流量页：按站点看入站/出站](docs/traffic.png) | ![故障诊断：回源、证书、本地监听](docs/diagnostics.png) |
 
 ---
 
-## 新增功能说明
+## 和上游差在哪
 
-### 分离版推流
+本仓是 [snnabb/Meridian](https://github.com/snnabb/Meridian) 的 fork。相对 **当前** 上游（v1.12.4），不要把「分离推流」当成独有功能——上游站点模型里已经有 `playback_target_url` / `playback_mode` / `stream_hosts`。
 
-每个站点支持独立的播放回源配置，实现 **API 流量** 与 **媒体推流** 的完全分离：
-
-| 字段 | 用途 | 示例 |
+| 能力 | 本仓 | 上游 |
 |------|------|------|
-| **主回源** `target_url` | 网页、API、元数据、登录 | `https://emby.example.com` |
-| **播放回源** `playback_target_url` | 视频、音频、直播、转码 | `https://cdn.example.com` |
-| **额外推流节点** `stream_hosts` | 多 CDN / 多节点备援 | `https://node2.example.com` |
+| 明文站点 JSON 导出 / 导入 | 有。`GET /api/sites/export`、`POST /api/sites/import`，只新建不覆盖 | 没有这一对接口。上游是加密全量备份 |
+| 独立流量页 `#traffic` | 有 | `#traffic` 并进仪表盘 |
+| 分离推流（API 走主回源，播放走 playback） | 有，实现更窄 | 同样有这些字段，还有更完整的发现/改写 |
+| 单文件 Go + 四页原生前端 | 有意保持 | 已拆到 `cmd/meridian/`，页面更多 |
 
-播放路由判定路径：
-
-```
-/Videos/  /emby/Videos/  /Audio/  /emby/Audio/
-/LiveTV/  /emby/LiveTV/  /Items/.../Download
-```
-
-播放模式：
-
-- **直连分流**：播放请求直接命中首个播放回源（适合完整 Emby 实例）
-- **重定向跟随**：跟随上游重定向到任意播放节点（适合多节点 CDN 分发）
+备份是明文站点配置（含回源 URL），不含用户、流量或 JWT。新导出 `version` 为 `streamdock-v1`；旧文件 `meridian-v1` 仍能导入。
 
 ---
 
-### 配置导出 / 导入
+## 它怎么跑
 
-在「站点管理」页工具栏新增两个按钮：
+<p align="center">
+  <img src="./assets/readme/flow.svg" width="100%" alt="先 clone 当前 GitHub 仓库，再 go build -o streamdock，添加站点，最后导出 JSON 备份">
+</p>
 
-#### 导出配置
-
-点击「导出配置」，自动下载包含全部站点信息的 JSON 备份文件：
-
-```json
-{
-  "version": "meridian-v1",
-  "sites": [
-    {
-      "name": "Emby-US-01",
-      "listen_port": 8001,
-      "target_url": "https://emby.example.com",
-      "playback_target_url": "https://cdn.example.com",
-      "playback_mode": "direct",
-      "stream_hosts": ["https://node2.example.com"],
-      "ua_mode": "infuse",
-      "traffic_quota": 0,
-      "speed_limit": 0
-    }
-  ]
-}
-```
-
-文件名格式：`meridian_backup_YYYY-MM-DD.json`
-
-#### 导入配置
-
-点击「导入配置」，选择之前导出的 JSON 文件。支持两种格式：
-
-- 标准格式：含 `version` + `sites` 字段的对象
-- 简化格式：直接是站点数组
-
-导入前会弹出确认窗口，列出所有即将创建的站点。导入不覆盖现有站点，每条记录均会新建。
+管理面默认听 `127.0.0.1:9090`。每个站点另开一个端口给 Emby 客户端：API / WebSocket 走 `target_url`，命中播放路径时走 `playback_target_url` 和 `stream_hosts`。
 
 ---
 
-## 后端 API 变更
+## 先跑起来
 
-本版本新增两个接口，其余 API 与原版完全兼容：
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET` | `/api/sites/export` | 导出全部站点为 JSON（触发下载） |
-| `POST` | `/api/sites/import` | 批量导入站点，返回 `{created, skipped}` |
-
----
-
-## 快速部署
-
-### 从源码构建
+克隆：
 
 ```bash
-git clone https://github.com/tsumon/Meridian-merged.git
-cd Meridian-merged
-go build -o meridian .
-JWT_SECRET=$(openssl rand -hex 32) ./meridian
+git clone https://github.com/tsumon/StreamDock.git
+cd StreamDock
+go build -o streamdock .
+JWT_SECRET=$(openssl rand -hex 32) SETUP_TOKEN=$(openssl rand -hex 32) ./streamdock
 ```
 
-访问 `http://你的IP:9090`，首次打开引导设置管理员密码。
+打开 `http://127.0.0.1:9090`。空库第一次创建管理员需要启动日志里的 `SETUP_TOKEN`。
 
 ### Docker
 
 ```bash
-docker run -d --name meridian \
+docker run -d --name streamdock \
   -p 9090:9090 -p 8001-8010:8001-8010 \
-  -v meridian-data:/app/data \
+  -v streamdock-data:/app/data \
   -e JWT_SECRET=$(openssl rand -hex 32) \
-  ghcr.io/tsumon/meridian-merged:latest
+  ghcr.io/tsumon/streamdock:latest
 ```
 
----
-
-## 配置
-
-### 命令行参数
-
-```bash
-./meridian                          # 默认 :9090
-./meridian --port 8080              # 自定义端口
-./meridian --db /data/meridian.db   # 自定义数据库路径
-```
-
-### 环境变量
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `PORT` | `9090` | 管理面板监听端口 |
-| `DB_PATH` | `meridian.db` | SQLite 数据库路径 |
-| `JWT_SECRET` | 随机生成 | JWT 签名密钥，**生产环境必须显式设置** |
-
-### Docker Compose
+镜像名是 `ghcr.io/tsumon/streamdock`，不跟 GitHub 仓库名走。容器网络里面板默认绑 `0.0.0.0`。
 
 ```yaml
 services:
-  meridian:
-    image: ghcr.io/tsumon/meridian-merged:latest
+  streamdock:
+    image: ghcr.io/tsumon/streamdock:latest
     restart: unless-stopped
     ports:
       - "9090:9090"
       - "8001-8010:8001-8010"
     volumes:
-      - meridian-data:/app/data
+      - streamdock-data:/app/data
     environment:
       - JWT_SECRET=your-secret-here
 
 volumes:
-  meridian-data:
+  streamdock-data:
 ```
+
+源码安装脚本仍从本仓拉取：
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/tsumon/StreamDock/main/install.sh)
+```
+
+systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。仓库还没有 GitHub Release 时，这个脚本会失败并提示改用 Docker 或源码构建。
 
 ---
 
-## 原版核心特性
+## 配置
 
-继承自 [Meridian](https://github.com/snnabb/Meridian) 的全部功能：
+```bash
+./streamdock                          # 默认 127.0.0.1:9090，数据库 streamdock.db
+./streamdock --port 8080
+./streamdock --db /data/streamdock.db
+```
 
-| 功能 | 说明 |
-|------|------|
-| **多站点反代** | 每个站点独立监听端口，独立配置上游 |
-| **UA 伪装** | Infuse / Web / 客户端 三种预设，HTTP + WebSocket 统一改写 |
-| **流量管控** | 按站点统计流量、设置限速、设置配额 |
-| **WebSocket 代理** | 完整支持 Emby WebSocket 通信 |
-| **SSE 实时推送** | 仪表盘数据实时更新 |
-| **故障诊断** | 回源健康检测、TLS 证书检查、请求头预览 |
-| **JWT 认证** | Bearer Token 认证，密码 bcrypt 存储 |
-| **单二进制部署** | 前端嵌入二进制，SQLite 持久化，无外部依赖 |
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `PORT` | `9090` | 管理面板端口 |
+| `DB_PATH` | `streamdock.db` | SQLite 路径。未指定且只有旧的 `meridian.db` 时，会打开旧文件一轮 |
+| `JWT_SECRET` | 进程内随机 | 至少 32 字节。不设则重启后会话作废 |
+| `SETUP_TOKEN` | 空库时生成 | 创建第一个管理员 |
+| `PANEL_BIND_ADDR` | `127.0.0.1` | 非回环必须再设 `ALLOW_INSECURE_HTTP=true`，或前面加 HTTPS 反代 |
+
+会话在 HttpOnly Cookie `streamdock_session` 里。脚本仍可用 `Authorization: Bearer`。
 
 ---
 
-## 技术架构
+## 备份
+
+面板「站点管理」→「导出配置」下载 JSON。文件名 `streamdock_backup_YYYY-MM-DD.json`。导入只新建，端口冲突会跳过。
+
+也可以直接备份 SQLite：
 
 ```
-┌─────────────────────────────────────────────────┐
-│                 Meridian-Merged                   │
-│                                                  │
-│  ┌──────────┐   ┌────────────────────────────┐   │
-│  │ 管理面板  │   │    反代引擎 (per-site)      │   │
-│  │ :9090    │   │  :8001  :8002  :800N       │   │
-│  │          │   │                            │   │
-│  │ REST API │   │  HTTP  ──► target_url      │   │
-│  │ SSE 推送 │   │  WS    ──► target_url      │   │
-│  │ 静态文件  │   │  播放  ──► playback_target  │   │
-│  │ 导出导入  │   │  备援  ──► stream_hosts[]  │   │
-│  └──────────┘   └────────────────────────────┘   │
-│        │                    │                    │
-│  ┌───────────────────────────────────────────┐   │
-│  │              SQLite (嵌入式)               │   │
-│  └───────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
+streamdock.db
+streamdock.db-wal
+streamdock.db-shm
 ```
 
-| 组件 | 技术选型 |
-|------|---------|
-| 后端 | 单文件 Go（`main.go`），标准库 `net/http` |
-| 前端 | 原生 HTML/CSS/JS SPA，hash 路由，`embed.FS` 嵌入 |
-| 数据库 | `modernc.org/sqlite`（纯 Go，无 CGO） |
-| 认证 | 自实现 HMAC-SHA256 JWT |
-
-### 项目结构
-
-```
-Meridian-merged/
-├── main.go                        # 后端逻辑（新增 export/import handler）
-├── main_test.go
-├── web/
-│   ├── embed.go
-│   └── static/
-│       ├── index.html
-│       ├── css/
-│       └── js/
-│           ├── api.js             # 新增 exportSites / importSites 方法
-│           ├── app.js
-│           ├── router.js
-│           ├── toast.js
-│           └── pages/
-│               ├── sites.js      # 新增导出/导入按钮与逻辑
-│               ├── dashboard.js
-│               ├── diag.js
-│               └── traffic.js
-├── Dockerfile
-├── go.mod / go.sum
-└── .github/workflows/
-```
+若部署还在用旧文件名，备份 `meridian.db` 及其 WAL/SHM。恢复时停进程，还原文件，用原来的 `JWT_SECRET` 启动。
 
 ---
 
-## 改动文件清单
+## 边界
 
-相比原版 Meridian，本项目共改动 3 个文件：
+- 只有一个管理员，没有角色。
+- 管理面自己不提供 HTTPS。
+- JSON 备份是明文，里面有回源 URL。
+- 流量每 60 秒刷进 SQLite，异常退出可能丢掉最近一分钟。
+- 这不是上游 Meridian 的功能全集，也不是「只改了三个文件」的薄 fork。
 
-### `main.go`（新增约 100 行）
-
-- `ExportSiteRecord` 结构体：定义导出/导入的 JSON 字段
-- `handleSitesExport()`：`GET /api/sites/export`，序列化全站点并以附件形式下载
-- `handleSitesImport()`：`POST /api/sites/import`，批量写库并自动启动，返回统计
-- 路由注册优先于 `/api/sites/` 通配符，防止被吞
-
-### `web/static/js/pages/sites.js`（新增约 90 行）
-
-- 工具栏新增「导出配置」「导入配置」按钮及隐藏文件选择器
-- `exportSitesConfig()`：调用导出接口，Blob 转下载链接
-- `importSitesConfig()`：读取 JSON 文件，兼容数组/对象两种格式，弹窗确认后批量导入
-
-### `web/static/js/api.js`（新增 2 行）
-
-- `API.exportSites()`
-- `API.importSites(sites)`
+安全报告发到本仓库的 [Security Advisory](https://github.com/tsumon/StreamDock/security/advisories/new)，不要发到上游。细节见 [SECURITY.md](SECURITY.md)。贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ---
 
-## 备份与恢复
+## 上游
 
-### 方式一：JSON 导出（推荐）
-
-在面板「站点管理」页点击「导出配置」，保存 JSON 文件。需要恢复时点击「导入配置」选择文件即可。
-
-### 方式二：SQLite 直接备份
-
-最小备份集：
-
-```
-meridian.db
-meridian.db-wal
-meridian.db-shm
-```
-
-恢复时停止服务 → 还原数据库文件 → 用原 `JWT_SECRET` 重启。
-
----
-
-## 运维要点
-
-- **JWT 密钥**：未设置 `JWT_SECRET` 时每次启动随机生成，重启后会话全部失效
-- **流量持久化**：每 60 秒刷入 SQLite，异常退出可能丢失最近一分钟计量
-- **导入幂等性**：导入不覆盖现有站点，重复导入会新建同名站点
-- **优雅关闭**：收到 `SIGINT`/`SIGTERM` 后先 flush 流量再退出
-
----
-
-## 上游项目
-
-本项目基于以下开源项目：
-
-- [Meridian](https://github.com/snnabb/Meridian) — MIT License，原版 Emby 反代管理面板
-
----
+- [Meridian](https://github.com/snnabb/Meridian) — MIT，原版 Emby 反代管理面板
 
 ## License
 

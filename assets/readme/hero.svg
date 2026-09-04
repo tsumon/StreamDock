@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">StreamDock</title>
+  <desc id="desc">Single-binary Emby reverse-proxy panel. Plaintext site import and export, plus a dedicated traffic page. GitHub repository is still tsumon/Meridian-merged.</desc>
+
+  <rect width="1200" height="400" rx="26" fill="#050607"/>
+  <rect x="1" y="1" width="1198" height="398" rx="25" fill="none" stroke="#FFFFFF14" stroke-width="1"/>
+
+  <g id="title-block" transform="translate(56 52)">
+    <text x="0" y="22" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" letter-spacing="2.4">EMBY REVERSE PROXY</text>
+    <text x="0" y="92" fill="#F4F6F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="64" font-weight="700" letter-spacing="-2.2">StreamDock</text>
+    <text x="0" y="142" fill="#C9CED6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="22">单二进制 Emby 反代面板。</text>
+    <text x="0" y="172" fill="#C9CED6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="22">明文导入导出，独立流量页。</text>
+    <text x="0" y="232" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">Go 1.26 · SQLite · MIT</text>
+    <text x="0" y="262" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">repo: tsumon/Meridian-merged</text>
+  </g>
+
+  <g id="dock-proof" transform="translate(700 48)">
+    <rect x="0" y="0" width="444" height="304" rx="18" fill="#101214"/>
+    <rect x="0.5" y="0.5" width="443" height="303" rx="18" fill="none" stroke="#FFFFFF14"/>
+
+    <text x="28" y="38" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">TWO LANES · ONE DOCK</text>
+
+    <rect x="28" y="58" width="388" height="52" rx="10" fill="#0A84FF"/>
+    <text x="222" y="91" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="20" font-weight="600">PANEL :9090</text>
+
+    <rect x="28" y="134" width="176" height="64" rx="10" fill="#1A1D22"/>
+    <text x="116" y="160" text-anchor="middle" fill="#64D2FF" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">API</text>
+    <text x="116" y="182" text-anchor="middle" fill="#F4F6F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18">origin</text>
+
+    <rect x="240" y="134" width="176" height="64" rx="10" fill="#1A1D22"/>
+    <text x="328" y="160" text-anchor="middle" fill="#0A84FF" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">PLAY</text>
+    <text x="328" y="182" text-anchor="middle" fill="#F4F6F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18">playback / CDN</text>
+
+    <path d="M116 110 v24" stroke="#64D2FF" stroke-width="2" fill="none"/>
+    <path d="M328 110 v24" stroke="#0A84FF" stroke-width="2" fill="none"/>
+
+    <rect x="28" y="220" width="388" height="56" rx="10" fill="#16181C"/>
+    <text x="222" y="244" text-anchor="middle" fill="#8E959E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">SITES :8001 … :800N</text>
+    <text x="222" y="266" text-anchor="middle" fill="#C9CED6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18">export JSON · traffic page</text>
+  </g>
+</svg>

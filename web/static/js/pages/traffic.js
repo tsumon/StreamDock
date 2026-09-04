@@ -2,85 +2,112 @@
 function renderTraffic() {
   const page = document.getElementById('page-traffic');
   page.innerHTML = `
-    <h1 class="section-title fade-up">流量统计</h1>
-    <p class="section-sub fade-up stagger-1">查看各站点流量使用情况</p>
-    <div class="controls-row fade-up stagger-1">
-      <select class="form-select" id="traffic-site-select">
-        <option value="">加载中...</option>
+    <header class="page-header fade-in">
+      <h1 class="section-title">流量统计</h1>
+      <p class="section-sub">按站点查看入站 / 出站字节。计量是两端合计。</p>
+    </header>
+    <div class="controls-row fade-in">
+      <select class="form-select" id="traffic-site-select" aria-label="选择站点">
+        <option value="">加载中…</option>
       </select>
-      <select class="form-select" id="traffic-hours-select">
+      <select class="form-select" id="traffic-hours-select" aria-label="时间范围">
         <option value="24">最近 24 小时</option>
         <option value="168">最近 7 天</option>
         <option value="720">最近 30 天</option>
       </select>
     </div>
-    <div class="chart-wrap fade-up stagger-2">
+    <div id="traffic-body"></div>
+  `;
+
+  loadTrafficSites();
+  document.getElementById('traffic-site-select').onchange = loadTrafficChart;
+  document.getElementById('traffic-hours-select').onchange = loadTrafficChart;
+}
+
+function trafficChartMarkup() {
+  return `
+    <div class="chart-wrap">
       <div class="chart-head">
         <h3>流量趋势</h3>
         <div class="chart-legend">
-          <div class="legend-item"><div class="legend-dot in"></div>入站流量</div>
-          <div class="legend-item"><div class="legend-dot out"></div>出站流量</div>
+          <div class="legend-item"><div class="legend-dot in"></div>入站</div>
+          <div class="legend-item"><div class="legend-dot out"></div>出站</div>
         </div>
       </div>
       <canvas id="trafficChart"></canvas>
     </div>
     <div class="traffic-totals" id="traffic-totals"></div>
   `;
-
-  loadTrafficSites();
-
-  document.getElementById('traffic-site-select').onchange = loadTrafficChart;
-  document.getElementById('traffic-hours-select').onchange = loadTrafficChart;
 }
 
 async function loadTrafficSites() {
+  const body = document.getElementById('traffic-body');
+  const sel = document.getElementById('traffic-site-select');
   try {
     const sites = await API.listSites();
-    const sel = document.getElementById('traffic-site-select');
     if (!sites || sites.length === 0) {
       sel.innerHTML = '<option value="">暂无站点</option>';
+      body.innerHTML = UI.empty({
+        title: '还没有站点可统计',
+        body: '先到站点管理添加一个反代，流量才会按站点记下来。',
+        actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
+      });
+      body.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));
       return;
     }
     sel.innerHTML = sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    body.innerHTML = trafficChartMarkup();
     loadTrafficChart();
   } catch (e) {
-    Toast.error('加载站点失败');
+    sel.innerHTML = '<option value="">加载失败</option>';
+    body.innerHTML = UI.error({ body: e.message, retry: true });
+    body.querySelector('[data-error-retry]')?.addEventListener('click', loadTrafficSites);
   }
 }
 
 async function loadTrafficChart() {
-  const siteId = document.getElementById('traffic-site-select').value;
-  const hours = parseInt(document.getElementById('traffic-hours-select').value);
+  const siteId = document.getElementById('traffic-site-select')?.value;
+  const hours = parseInt(document.getElementById('traffic-hours-select')?.value, 10);
+  const totals = document.getElementById('traffic-totals');
   if (!siteId) return;
 
-  try {
-    const logs = await API.getTraffic(siteId, hours);
-    const sites = await API.listSites();
-    const site = sites.find(s => s.id === parseInt(siteId));
+  if (!document.getElementById('trafficChart')) {
+    document.getElementById('traffic-body').innerHTML = trafficChartMarkup();
+  }
 
-    // Update totals
+  try {
+    const [logs, sites] = await Promise.all([
+      API.getTraffic(siteId, hours),
+      API.listSites(),
+    ]);
+    const site = sites.find(s => s.id === parseInt(siteId, 10));
+
     const totalIn = logs.reduce((a, l) => a + (l.bytes_in || 0), 0);
     const totalOut = logs.reduce((a, l) => a + (l.bytes_out || 0), 0);
 
-    document.getElementById('traffic-totals').innerHTML = `
-      <div class="total-card fade-up stagger-3">
-        <div class="total-label">入站流量</div>
-        <div class="total-value">${formatBytes(totalIn)}</div>
-      </div>
-      <div class="total-card fade-up stagger-4">
-        <div class="total-label">出站流量</div>
-        <div class="total-value">${formatBytes(totalOut)}</div>
-      </div>
-      <div class="total-card fade-up stagger-5">
-        <div class="total-label">累计使用</div>
-        <div class="total-value">${formatBytes(site ? site.traffic_used : 0)}</div>
-        ${site && site.traffic_quota > 0 ? `<div class="total-delta" style="color:var(--white-38)">额度 ${formatBytes(site.traffic_quota)}</div>` : ''}
-      </div>
-    `;
+    if (totals) {
+      totals.innerHTML = `
+        <div class="total-card">
+          <div class="total-label">入站流量</div>
+          <div class="total-value">${formatBytes(totalIn)}</div>
+        </div>
+        <div class="total-card">
+          <div class="total-label">出站流量</div>
+          <div class="total-value">${formatBytes(totalOut)}</div>
+        </div>
+        <div class="total-card">
+          <div class="total-label">累计使用</div>
+          <div class="total-value">${formatBytes(site ? site.traffic_used : 0)}</div>
+          ${site && site.traffic_quota > 0 ? `<div class="total-delta">额度 ${formatBytes(site.traffic_quota)}</div>` : ''}
+        </div>
+      `;
+    }
 
     drawTrafficChart(logs, hours);
   } catch (e) {
-    console.error('Traffic load error:', e);
+    const body = document.getElementById('traffic-body');
+    body.innerHTML = UI.error({ body: e.message, retry: true });
+    body.querySelector('[data-error-retry]')?.addEventListener('click', loadTrafficChart);
   }
 }
 
@@ -90,67 +117,70 @@ function drawTrafficChart(logs, hours) {
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.parentElement.clientWidth;
-  const h = 280;
+  const h = 260;
   canvas.width = w * dpr;
   canvas.height = h * dpr;
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
-  const pad = { top: 24, right: 24, bottom: 40, left: 54 };
+  const pad = { top: 24, right: 24, bottom: 36, left: 54 };
   const cw = w - pad.left - pad.right;
   const ch = h - pad.top - pad.bottom;
 
-  // Prepare data arrays
   const numPoints = Math.min(hours, 24);
   const inbound = new Array(numPoints).fill(0);
   const outbound = new Array(numPoints).fill(0);
 
   if (logs.length > 0) {
-    // Map logs to chart points
     const now = Date.now();
     logs.forEach(l => {
       const t = new Date(l.recorded_at).getTime();
       const hoursAgo = (now - t) / 3600000;
       const idx = numPoints - 1 - Math.floor(hoursAgo * numPoints / hours);
       if (idx >= 0 && idx < numPoints) {
-        inbound[idx] += l.bytes_in / (1024 * 1024); // Convert to MB
+        inbound[idx] += l.bytes_in / (1024 * 1024);
         outbound[idx] += l.bytes_out / (1024 * 1024);
       }
     });
   }
 
-  const maxV = Math.max(1, ...inbound, ...outbound) * 1.2;
+  const rawMax = Math.max(0, ...inbound, ...outbound);
+  const maxV = rawMax > 0 ? rawMax * 1.2 : 1;
   const x = i => pad.left + (i / (numPoints - 1 || 1)) * cw;
   const y = v => pad.top + (1 - v / maxV) * ch;
 
-  // Clear
-  ctx.clearRect(0, 0, w * dpr, h * dpr);
+  ctx.clearRect(0, 0, w, h);
 
-  // Grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,.04)';
+  function axisLabel(v) {
+    if (v === 0) return '0';
+    if (v >= 10) return v.toFixed(0);
+    if (v >= 1) return v.toFixed(1);
+    return v.toFixed(2);
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,.06)';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const yy = pad.top + (i / 4) * ch;
     ctx.beginPath(); ctx.moveTo(pad.left, yy); ctx.lineTo(w - pad.right, yy); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.2)';
+    ctx.fillStyle = 'rgba(255,255,255,.38)';
     ctx.font = '11px Inter, system-ui';
     ctx.textAlign = 'right';
-    const label = ((4 - i) / 4 * maxV).toFixed(0);
-    ctx.fillText(label + ' MB', pad.left - 12, yy + 4);
+    const value = (4 - i) / 4 * (logs.length === 0 ? 0 : maxV);
+    ctx.fillText(axisLabel(value) + ' MB', pad.left - 12, yy + 4);
   }
 
-  // Empty state
   if (logs.length === 0) {
-    ctx.fillStyle = 'rgba(255,255,255,.2)';
+    ctx.fillStyle = 'rgba(255,255,255,.38)';
     ctx.font = '14px Inter, system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText('暂无流量数据', w / 2, h / 2);
+    ctx.fillText('这段时间没有流量记录', w / 2, h / 2);
     return;
   }
 
-  // Draw lines
-  function smoothLine(data, color, glowColor) {
+  function smoothLine(data, color, fillFrom) {
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(x(0), y(data[0]));
@@ -160,28 +190,22 @@ function drawTrafficChart(logs, hours) {
       ctx.quadraticCurveTo(x(i - 1), y(data[i - 1]), xc, yc);
     }
     ctx.lineTo(x(data.length - 1), y(data[data.length - 1]));
-
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 16;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Area fill
     ctx.lineTo(x(data.length - 1), pad.top + ch);
     ctx.lineTo(x(0), pad.top + ch);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
-    grad.addColorStop(0, color.replace(')', ',.12)').replace('rgb', 'rgba'));
+    grad.addColorStop(0, fillFrom);
     grad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = grad;
     ctx.fill();
     ctx.restore();
   }
 
-  smoothLine(outbound, 'rgb(100,210,255)', 'rgba(100,210,255,.4)');
-  smoothLine(inbound, 'rgb(10,132,255)', 'rgba(10,132,255,.4)');
+  smoothLine(outbound, 'rgb(100,210,255)', 'rgba(100,210,255,0.12)');
+  smoothLine(inbound, 'rgb(10,132,255)', 'rgba(10,132,255,0.12)');
 }
 
 window.addEventListener('resize', () => {
