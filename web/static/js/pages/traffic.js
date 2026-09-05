@@ -111,6 +111,21 @@ async function loadTrafficChart() {
   }
 }
 
+function trafficThemeColors() {
+  const styles = getComputedStyle(document.documentElement);
+  const read = function (name, fallback) {
+    return styles.getPropertyValue(name).trim() || fallback;
+  };
+  return {
+    grid: read('--grid', '#d7e2ea'),
+    inkMuted: read('--ink-muted', '#3e5360'),
+    api: read('--api', '#2f5f73'),
+    playback: read('--playback', '#c45c26'),
+    apiDim: read('--api-dim', 'rgba(47, 95, 115, 0.12)'),
+    playbackDim: read('--playback-dim', 'rgba(196, 92, 38, 0.12)'),
+  };
+}
+
 function drawTrafficChart(logs, hours) {
   const canvas = document.getElementById('trafficChart');
   if (!canvas) return;
@@ -125,6 +140,7 @@ function drawTrafficChart(logs, hours) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
+  const colors = trafficThemeColors();
   const pad = { top: 24, right: 24, bottom: 36, left: 54 };
   const cw = w - pad.left - pad.right;
   const ch = h - pad.top - pad.bottom;
@@ -160,12 +176,12 @@ function drawTrafficChart(logs, hours) {
     return v.toFixed(2);
   }
 
-  ctx.strokeStyle = '#d7e2ea';
+  ctx.strokeStyle = colors.grid;
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const yy = pad.top + (i / 4) * ch;
     ctx.beginPath(); ctx.moveTo(pad.left, yy); ctx.lineTo(w - pad.right, yy); ctx.stroke();
-    ctx.fillStyle = '#3e5360';
+    ctx.fillStyle = colors.inkMuted;
     ctx.font = '11px "Source Sans 3", "Noto Sans SC", system-ui';
     ctx.textAlign = 'right';
     const value = (4 - i) / 4 * (logs.length === 0 ? 0 : maxV);
@@ -173,7 +189,7 @@ function drawTrafficChart(logs, hours) {
   }
 
   if (logs.length === 0) {
-    ctx.fillStyle = '#3e5360';
+    ctx.fillStyle = colors.inkMuted;
     ctx.font = '14px "Source Sans 3", "Noto Sans SC", system-ui';
     ctx.textAlign = 'center';
     ctx.fillText('这段时间没有流量记录', w / 2, h / 2);
@@ -198,19 +214,25 @@ function drawTrafficChart(logs, hours) {
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
     grad.addColorStop(0, fillFrom);
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'transparent');
     ctx.fillStyle = grad;
     ctx.fill();
     ctx.restore();
   }
 
-  smoothLine(outbound, 'rgb(196,92,38)', 'rgba(196,92,38,0.12)');
-  smoothLine(inbound, 'rgb(47,95,115)', 'rgba(47,95,115,0.12)');
+  smoothLine(outbound, colors.playback, colors.playbackDim);
+  smoothLine(inbound, colors.api, colors.apiDim);
 }
 
-window.addEventListener('resize', () => {
-  if (Router.current === 'traffic') {
-    const canvas = document.getElementById('trafficChart');
-    if (canvas) loadTrafficChart();
-  }
+function redrawTrafficIfVisible() {
+  if (typeof Router === 'undefined' || Router.current !== 'traffic') return;
+  const canvas = document.getElementById('trafficChart');
+  if (canvas) loadTrafficChart();
+}
+
+window.addEventListener('resize', redrawTrafficIfVisible);
+document.addEventListener('streamdock:theme', redrawTrafficIfVisible);
+new MutationObserver(redrawTrafficIfVisible).observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ['data-theme'],
 });

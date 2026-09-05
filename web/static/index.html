@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StreamDock — Emby 反代管理面板</title>
 <meta name="description" content="StreamDock 轻量级 Emby 反向代理管理面板">
-<meta name="theme-color" content="#F4F6F8">
+<meta name="theme-color" content="#f4f6f8">
+<script>
+(function(){var k='streamdock-theme',t='light';try{var s=localStorage.getItem(k);if(s==='light'||s==='dark')t=s;else if(window.matchMedia('(prefers-color-scheme: dark)').matches)t='dark';}catch(e){}var r=document.documentElement;r.setAttribute('data-theme',t);r.style.colorScheme=t;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#151c21':'#f4f6f8');})();
+</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +22,12 @@
 <!-- Login Page -->
 <div id="page-login">
   <div class="login-card">
+    <div class="login-theme">
+      <div class="theme-switch" role="group" aria-label="主题">
+        <button type="button" class="theme-switch-btn" data-theme-choice="light" aria-pressed="false" aria-label="亮色">亮</button>
+        <button type="button" class="theme-switch-btn" data-theme-choice="dark" aria-pressed="false" aria-label="暗色">暗</button>
+      </div>
+    </div>
     <div class="login-brand">
       <h1>StreamDock</h1>
       <p>Emby 反代管理面板</p>
@@ -55,6 +64,10 @@
       <a href="#diagnostics" class="topnav-link" data-page="diagnostics">故障诊断</a>
     </div>
     <div class="topnav-right">
+      <div class="theme-switch" role="group" aria-label="主题">
+        <button type="button" class="theme-switch-btn" data-theme-choice="light" aria-pressed="false" aria-label="亮色">亮</button>
+        <button type="button" class="theme-switch-btn" data-theme-choice="dark" aria-pressed="false" aria-label="暗色">暗</button>
+      </div>
       <div class="account-menu">
         <button type="button" class="avatar-btn" id="avatar-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="account-panel" aria-label="账户菜单">A</button>
         <div class="account-panel" id="account-panel" role="menu" hidden>
@@ -110,6 +123,7 @@
 
 </div>
 
+<script src="/js/theme.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/toast.js"></script>
 <script src="/js/router.js"></script>

@@ -24,6 +24,28 @@ colors:
   red-dim: "rgba(180, 35, 24, 0.1)"
   surface-hover: "#eef2f5"
   surface-active: "#e4eaef"
+  paper-dark: "#151c21"
+  grid-dark: "#2a3842"
+  sheet-dark: "#1c252c"
+  ink-dark: "#e6eef2"
+  ink-secondary-dark: "#b7c6d0"
+  ink-muted-dark: "#94a8b4"
+  hairline-dark: "#2e3a42"
+  hairline-strong-dark: "#5a7382"
+  primary-dark: "#e6eef2"
+  primary-hover-dark: "#f3f7f9"
+  api-dark: "#7eafc0"
+  api-dim-dark: "rgba(126, 175, 192, 0.18)"
+  playback-dark: "#db8a4e"
+  playback-dim-dark: "rgba(219, 138, 78, 0.18)"
+  green-dark: "#5cba82"
+  green-dim-dark: "rgba(92, 186, 130, 0.16)"
+  orange-dark: "#d4a04a"
+  orange-dim-dark: "rgba(212, 160, 74, 0.16)"
+  red-dark: "#e8827a"
+  red-dim-dark: "rgba(232, 130, 122, 0.16)"
+  surface-hover-dark: "#252f37"
+  surface-active-dark: "#2c3840"
 typography:
   display:
     fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
@@ -162,48 +184,51 @@ components:
 
 StreamDock is a network worksheet, not a cinema console. Cool fluorescent paper carries a 20px drafting-blue grid; white sheets and navy-ink boxes sit on that field like annotations on a plot plan. Each site is a node with two outbound edges — drafting-blue for API, copper for playback — so the operator can see where traffic actually goes without decoding four hero tiles.
 
-The panel is an Operate surface for a homelab desk: dense, bilingual (Source Sans 3 with Noto Sans SC), and built from native controls. Title-block chrome is a paper strip ruled with a 2px ink line. Depth is stroke, not glow. The discarded world — The Dark Glass Console, Inter, cinema black, system blue `#0A84FF`, glass bars — is an anti-reference, not a fallback.
+The panel is an Operate surface for a homelab desk: dense, bilingual (Source Sans 3 with Noto Sans SC), and built from native controls. Title-block chrome is a paper strip ruled with a 2px ink line. Depth is stroke, not glow. Dark is the same worksheet at night — cool slate paper, still a 20px grid — not a second product. The discarded world — The Dark Glass Console, Inter, cinema black, system blue `#0A84FF`, glass bars — is an anti-reference, not a fallback.
 
 **Key Characteristics:**
-- Fluorescent paper canvas with a fixed 20px drafting grid
+- Fluorescent paper canvas with a fixed 20px drafting grid (cool slate paper after dark)
 - Navy ink as type, chrome rule, and primary fill; copper reserved for the playback route and focus
 - 2–6px drafting corners; square datasheet bands (spec strip, traffic totals)
 - Two named route colors, never a third “accent”
 - Source Sans 3 + Noto Sans SC at a 15px root; tabular/mono only for machine strings
+- One token set, two values: `html[data-theme="light"|"dark"]` remaps `--paper` `--ink` `--api` `--playback`
 
 ## Colors
 
-A cool paper field, navy ink, one drafting-blue route, one copper route, and muted traffic-light status.
+A cool paper field, navy ink, one drafting-blue route, one copper route, and muted traffic-light status. Dark remaps the same names onto a night drafting table; it does not invert the light sheet.
 
 ### Primary
-- **Navy Ink** (`{colors.ink}` / `{colors.primary}`): Body copy, title-block wordmark, 2px chrome rules, filled primary actions, login sheet stroke. The same ink is the type color and the button fill; it is not a neon accent.
+- **Navy Ink** (`{colors.ink}` / `{colors.primary}`): Body copy, title-block wordmark, 2px chrome rules, filled primary actions, login sheet stroke. The same ink is the type color and the button fill; it is not a neon accent. Dark remap (`{colors.ink-dark}` / `{colors.primary-dark}`): cool off-white drafting ink at ~91% white; primary buttons become light fill / dark sheet text.
 
 ### Secondary
-- **Drafting API** (`{colors.api}`): The API / inbound edge, edge keys labeled `API`, inbound chart legend, in-page links, and the default toast marker. Dim wash (`{colors.api-dim}`) is selection and faint route fill, never a card background.
+- **Drafting API** (`{colors.api}`): The API / inbound edge, edge keys labeled `API`, inbound chart legend, in-page links, and the default toast marker. Dim wash (`{colors.api-dim}`) is selection and faint route fill, never a card background. Dark (`{colors.api-dark}`): same hue, higher lightness, slightly lower saturation.
 
 ### Tertiary
-- **Playback Copper** (`{colors.playback}`): The playback / outbound edge, active tab underline, mobile-tab active, input caret, and `:focus-visible` ring. It is a route and a focus signal, not a primary button.
+- **Playback Copper** (`{colors.playback}`): The playback / outbound edge, active tab underline, mobile-tab active, input caret, and `:focus-visible` ring. It is a route and a focus signal, not a primary button. Dark (`{colors.playback-dark}`): brighter copper, still copper.
 
 ### Neutral
-- **Cool Paper** (`{colors.paper}`): Page and title-block canvas; table header wash.
-- **Drafting Grid** (`{colors.grid}`): 1px lines on a 20px module; progress-track trough.
-- **Sheet** (`{colors.sheet}`): Nodes, sheets, fields, dialogs, toasts — the paper you write on.
-- **Secondary Ink** (`{colors.ink-secondary}`): Nav tabs at rest, ghost/secondary labels, mono URLs.
-- **Muted Ink** (`{colors.ink-muted}`): Section subs, spec labels, table headers, empty-state body.
-- **Hairline / Strong Hairline** (`{colors.hairline}`, `{colors.hairline-strong}`): Internal rules vs control strokes.
-- **Hover / Press Wash** (`{colors.surface-hover}`, `{colors.surface-active}`): Row and ghost hover, not glass overlays.
+- **Cool Paper** (`{colors.paper}`): Page and title-block canvas; table header wash. Dark (`{colors.paper-dark}`): cool slate `#151c21`, never `#000`.
+- **Drafting Grid** (`{colors.grid}`): 1px lines on a 20px module; progress-track trough. Dark (`{colors.grid-dark}`): a shade lighter than paper, still low-contrast.
+- **Sheet** (`{colors.sheet}`): Nodes, sheets, fields, dialogs, toasts — the paper you write on. Dark (`{colors.sheet-dark}`): lifted slate, lighter than paper.
+- **Secondary Ink** (`{colors.ink-secondary}`): Nav tabs at rest, ghost/secondary labels, mono URLs. Dark (`{colors.ink-secondary-dark}`).
+- **Muted Ink** (`{colors.ink-muted}`): Section subs, spec labels, table headers, empty-state body. Dark (`{colors.ink-muted-dark}`): still ≥4.5:1 on paper and sheet.
+- **Hairline / Strong Hairline** (`{colors.hairline}`, `{colors.hairline-strong}`): Internal rules vs control strokes. Dark (`{colors.hairline-dark}`, `{colors.hairline-strong-dark}`): lighter lines, not glow.
+- **Hover / Press Wash** (`{colors.surface-hover}`, `{colors.surface-active}`): Row and ghost hover, not glass overlays. Dark (`{colors.surface-hover-dark}`, `{colors.surface-active-dark}`): raise contrast, never lower it.
 
 ### Status
-- **Run Green** (`{colors.green}`): Live LED, running copy, good latency.
-- **Quota Amber** (`{colors.orange}`): Warn fills, retry live-badge, mid latency.
-- **Fault Red** (`{colors.red}`): Danger buttons, invalid fields, down LED, bad latency.
+- **Run Green** (`{colors.green}` / `{colors.green-dark}`): Live LED, running copy, good latency.
+- **Quota Amber** (`{colors.orange}` / `{colors.orange-dark}`): Warn fills, retry live-badge, mid latency.
+- **Fault Red** (`{colors.red}` / `{colors.red-dark}`): Danger buttons, invalid fields, down LED, bad latency.
 
 ### Named Rules
 **The Two Routes Rule.** API is drafting blue; playback is copper. Never invert them, never paint a third route, never use copper as a CTA fill.
 
-**The Ink Primary Rule.** Primary actions fill with navy ink. Copper and API blue are routes and focus, not buttons.
+**The Ink Primary Rule.** Primary actions fill with ink. Copper and API blue are routes and focus, not buttons. In dark, ink is the light drafting pigment, so the primary button is light-on-dark-sheet — still ink fill, not a new CTA color.
 
-**The Paper Field Rule.** The canvas is fluorescent paper plus the drafting grid. Sheets sit on the grid; they do not replace it with a solid dark field.
+**The Paper Field Rule.** The canvas is fluorescent paper plus the drafting grid. Sheets sit on the grid; they do not replace it with a solid dark field. After dark the field is still paper: `{colors.paper-dark}` plus the 20px grid.
+
+**The Night Worksheet Rule.** Dark is a remap of the same token names (`html[data-theme="dark"]`), not a second palette and not an invert. No pure `#000`, no cinema black, no glass, no `#0A84FF`.
 
 ## Typography
 
@@ -247,16 +272,16 @@ At 768px the top tabs hide and a 44px paper tab bar with a 2px ink top rule take
 
 ## Elevation & Depth
 
-Rest-state surfaces are flat: white sheet, 1px hairline or ink stroke, no drop shadow. The drafting grid showing around the sheet is the depth cue. Shadows exist only for things that float off the worksheet — account menu, login card, toast, modal (`--shadow-menu` / `--shadow-modal`). Modal scrim is navy ink at 45% (`rgba(28, 43, 54, 0.45)`). Focus is a copper ring (`0 0 0 2px paper, 0 0 0 4px playback`), never a glow.
+Rest-state surfaces are flat: sheet, 1px hairline or ink stroke, no drop shadow. The drafting grid showing around the sheet is the depth cue. In dark, elevation is a lighter sheet plus a slightly brighter hairline — not a bigger shadow. Shadows exist only for things that float off the worksheet — account menu, login card, toast, modal (`--shadow-menu` / `--shadow-modal`). Modal scrim is navy ink at 45% in light (`rgba(28, 43, 54, 0.45)`) and cool slate at 62% in dark (`rgba(10, 14, 18, 0.62)`). Focus is a copper ring (`0 0 0 2px paper, 0 0 0 4px playback`), never a glow.
 
 ### Shadow Vocabulary
-- **Menu / toast / login** (`0 1px 2px rgba(17,17,17,0.05), 0 4px 8px rgba(17,17,17,0.05), 0 8px 24px rgba(17,17,17,0.04)`): Overlay panels only.
-- **Modal** (`0 2px 4px rgba(17,17,17,0.06), 0 8px 16px rgba(17,17,17,0.06), 0 16px 48px rgba(17,17,17,0.06)`): Native `<dialog>` sheet only.
+- **Menu / toast / login** (light: `0 1px 2px rgba(17,17,17,0.05), 0 4px 8px rgba(17,17,17,0.05), 0 8px 24px rgba(17,17,17,0.04)`; dark: `0 4px 12px rgba(8,12,16,0.45), 0 0 0 1px rgba(230,238,242,0.06)`): Overlay panels only.
+- **Modal** (light: `0 2px 4px rgba(17,17,17,0.06), 0 8px 16px rgba(17,17,17,0.06), 0 16px 48px rgba(17,17,17,0.06)`; dark: `0 8px 24px rgba(8,12,16,0.5), 0 0 0 1px rgba(230,238,242,0.08)`): Native `<dialog>` sheet only.
 
 ### Named Rules
 **The Stroke, Not Glow Rule.** Depth is a 1px ink or hairline stroke. No blur, no neon edge, no glass blur.
 
-**The Overlay-Only Shadow Rule.** Rest-state nodes, sheets, and spec bands have no box-shadow. Shadow is a response to leaving the page plane.
+**The Overlay-Only Shadow Rule.** Rest-state nodes, sheets, and spec bands have no box-shadow. Shadow is a response to leaving the page plane. Dark overlays may add a 1px light hairline because drop shadows vanish on slate paper.
 
 ## Shapes
 
@@ -275,7 +300,7 @@ Controls feel like labeled instruments on a worksheet: ink fill for the one comm
 
 ### Buttons
 - **Shape:** Primary/secondary 3px (`{rounded.sm}`), 40px min height, 10px 16px, 0.85rem / 600. Ghost 2px, 36px, 8px 12px, 0.8rem / 500.
-- **Primary:** Navy fill, sheet text. Hover `#0f1a22`. Used for login, add site, dialog confirm.
+- **Primary:** Ink fill, sheet text. Hover `{colors.primary-hover}` / `{colors.primary-hover-dark}`. Used for login, add site, dialog confirm.
 - **Ghost:** Sheet fill, hairline border, secondary ink. Hover wash + stronger hairline. Danger ghost tints red on hover.
 - **Secondary:** Sheet fill, strong hairline, 40px — cancel and empty-state alternate.
 - **Danger:** Fault red fill, sheet text.
@@ -303,6 +328,7 @@ Controls feel like labeled instruments on a worksheet: ink fill for the one comm
 - **Title block:** 52px paper+grid, 2px ink bottom, StreamDock wordmark 1rem / 700, 22px mark.
 - **Tabs:** 0.85rem / 500 secondary ink, 16px horizontal padding. Active: ink, 600, 2px copper underline that shares the chrome rule.
 - **Account:** 32px 2px-radius ink square with sheet initial.
+- **Theme switch:** Title-block instrument in `.topnav-right`, left of the account button; duplicated on the login card. Two 32px ghost cells, 2px corners, labels `亮` / `暗`. Not a glass capsule. `html[data-theme]` + `localStorage` (`streamdock-theme`); no stored value follows `prefers-color-scheme`. `color-scheme` and `theme-color` follow the resolved theme.
 - **Mobile bar:** Same paper+grid, 2px ink top, 44px min tabs, 0.62rem labels, 22px stroke icons. Active is copper.
 
 ### Spec strip
@@ -319,9 +345,10 @@ Native `<dialog>`. 6px sheet, 1px ink, modal shadow, max 480px. Header 16px 20px
 ### Do:
 - **Do** put every screen on the fluorescent paper grid and name the product StreamDock.
 - **Do** draw each site as a node with an API edge and a playback edge in the two named route colors.
-- **Do** fill the one primary action with navy ink; keep add/export on Sites as primary + ghosts.
+- **Do** fill the one primary action with ink; keep add/export on Sites as primary + ghosts.
 - **Do** use 2–6px corners, 1px strokes, and copper only for playback + focus + active tab.
 - **Do** pair Source Sans 3 with Noto Sans SC at the 15px operate scale; mono for ports and URLs.
+- **Do** remap the same CSS variables for dark; keep the 20px grid, two routes, and ink-as-primary.
 
 ### Don't:
 - **Don't** revive The Dark Glass Console: cinema black, Inter, `#0A84FF`, glass bars, glow, or blur.
@@ -329,3 +356,4 @@ Native `<dialog>`. 6px sheet, 1px ink, modal shadow, max 480px. Header 16px 20px
 - **Don't** replace the spec strip with four hero-metric cards, or clone the dashboard strip onto every page.
 - **Don't** use copper or API blue as a primary button fill.
 - **Don't** round past 6px, stadium-pill a chip, or drop a rest-state shadow on a node or sheet.
+- **Don't** use pure `#000` as paper, mechanically invert the light sheet, or ship a second `.dark-card` skin.
