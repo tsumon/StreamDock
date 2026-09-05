@@ -18,9 +18,28 @@ GitHub 仓库是 [`tsumon/StreamDock`](https://github.com/tsumon/StreamDock)。�
 
 四张图来自当前面板，不是示意稿。
 
-| 仪表盘 | 站点 | 流量 | 诊断 |
-|:---:|:---:|:---:|:---:|
-| ![仪表盘：站点拓扑与运行摘要](docs/dashboard.png) | ![站点管理：主回源与播放分流](docs/sites.png) | ![独立流量页：按站点看入站/出站](docs/traffic.png) | ![故障诊断：回源、证书、本地监听](docs/diagnostics.png) |
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <p align="center"><b>仪表盘</b></p>
+      <img src="docs/dashboard.png" width="100%" alt="仪表盘：站点拓扑与运行摘要">
+    </td>
+    <td width="50%" valign="top">
+      <p align="center"><b>站点</b></p>
+      <img src="docs/sites.png" width="100%" alt="站点管理：主回源与播放分流">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p align="center"><b>流量</b></p>
+      <img src="docs/traffic.png" width="100%" alt="独立流量页：按站点看入站/出站">
+    </td>
+    <td width="50%" valign="top">
+      <p align="center"><b>诊断</b></p>
+      <img src="docs/diagnostics.png" width="100%" alt="故障诊断：回源、证书、本地监听">
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -97,7 +116,7 @@ volumes:
 bash <(curl -sL https://raw.githubusercontent.com/tsumon/StreamDock/main/install.sh)
 ```
 
-systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。仓库还没有 GitHub Release 时，这个脚本会失败并提示改用 Docker 或源码构建。
+systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。安装脚本从 GitHub Releases 拉二进制；没有可用 Release 时会提示改用 Docker 或源码构建。
 
 ---
 
