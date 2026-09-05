@@ -99,7 +99,21 @@ bash <(curl -sL https://raw.githubusercontent.com/tsumon/StreamDock/main/install
 
 脚本从 GitHub Releases 拉二进制。systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。
 
-### Docker
+### Docker Compose（推荐）
+
+仓库根目录有 [`docker-compose.yml`](docker-compose.yml)：
+
+```bash
+cp .env.example .env
+# 编辑 .env，至少填 JWT_SECRET（可用: openssl rand -hex 32）
+docker compose up -d
+```
+
+面板：`http://127.0.0.1:9090`。站点监听端口默认映射 `8001-8010`，不够就在 compose 里加。
+
+镜像名是 `ghcr.io/tsumon/streamdock`。容器里面板绑 `0.0.0.0`（仅容器网络；前面请加反代或只暴露本机端口）。
+
+### Docker 单容器
 
 ```bash
 docker run -d --name streamdock \
@@ -107,25 +121,6 @@ docker run -d --name streamdock \
   -v streamdock-data:/app/data \
   -e JWT_SECRET=$(openssl rand -hex 32) \
   ghcr.io/tsumon/streamdock:latest
-```
-
-镜像名是 `ghcr.io/tsumon/streamdock`。容器里面板默认绑 `0.0.0.0`。
-
-```yaml
-services:
-  streamdock:
-    image: ghcr.io/tsumon/streamdock:latest
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-      - "8001-8010:8001-8010"
-    volumes:
-      - streamdock-data:/app/data
-    environment:
-      - JWT_SECRET=your-secret-here
-
-volumes:
-  streamdock-data:
 ```
 
 ---

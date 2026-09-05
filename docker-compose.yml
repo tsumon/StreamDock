@@ -1,0 +1,41 @@
+# StreamDock — Emby reverse proxy panel
+# Usage:
+#   cp .env.example .env   # set JWT_SECRET (and optional SETUP_TOKEN)
+#   docker compose up -d
+#
+# Panel: http://127.0.0.1:9090
+# Site listen ports: map more below if you need beyond 8001-8010
+
+services:
+  streamdock:
+    image: ghcr.io/tsumon/streamdock:latest
+    # Or build from this repo:
+    # build:
+    #   context: .
+    #   args:
+    #     VERSION: v1.4.0
+    container_name: streamdock
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+      - "8001-8010:8001-8010"
+    volumes:
+      - streamdock-data:/app/data
+    environment:
+      PORT: "9090"
+      DB_PATH: /app/data/streamdock.db
+      PANEL_BIND_ADDR: "0.0.0.0"
+      ALLOW_INSECURE_HTTP: "true"
+      # Required for stable sessions across restarts (min 32 bytes).
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      # Optional: first-admin setup token (min 32 bytes). If unset, container logs one.
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "/app/streamdock", "--healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  streamdock-data:
