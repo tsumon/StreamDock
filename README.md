@@ -1,78 +1,86 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="StreamDock：单二进制 Emby 反代管理面板。明文导入导出站点，独立流量页。GitHub 仓库是 tsumon/StreamDock。">
+  <img src="./assets/readme/hero.svg" width="100%" alt="StreamDock：单二进制 Emby 反代管理面板。明文导入导出站点，独立流量页。">
 </p>
 
 <p align="center">
-  <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&amp;logoColor=white" alt="Go 1.26+"></a>
-  <a href="https://pkg.go.dev/modernc.org/sqlite"><img src="https://img.shields.io/badge/SQLite-embedded-003B57?logo=sqlite&amp;logoColor=white" alt="Embedded SQLite"></a>
+  <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white" alt="Go 1.26+"></a>
+  <a href="https://pkg.go.dev/modernc.org/sqlite"><img src="https://img.shields.io/badge/SQLite-embedded-003B57?logo=sqlite&logoColor=white" alt="Embedded SQLite"></a>
+  <a href="https://github.com/tsumon/StreamDock/releases/latest"><img src="https://img.shields.io/github/v/release/tsumon/StreamDock?label=Release" alt="Latest Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
 </p>
 
 **Emby 反向代理管理面板**
 
-**StreamDock** 是一个单二进制 Emby 反向代理管理面板：浏览器里管站点，SQLite 落盘，前端嵌在同一个进程里。
+**StreamDock** 是一个单二进制 Emby 反代面板：浏览器里管站点，SQLite 落盘，前端嵌在同一个进程里。亮 / 暗都是同一套 Topology Worksheet（纸面网格），不是两套皮肤。
 
-GitHub 仓库是 [`tsumon/StreamDock`](https://github.com/tsumon/StreamDock)。仓库与产品名均为 StreamDock。
+仓库：[`tsumon/StreamDock`](https://github.com/tsumon/StreamDock)
 
 ---
 
 ## 面板长什么样
 
-四张图来自当前面板，不是示意稿。
+对角切面：左上暗色 · 右下亮色。同一布局，两套墨色。
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <p align="center"><b>仪表盘</b></p>
-      <img src="docs/dashboard.png" width="100%" alt="仪表盘：站点拓扑与运行摘要">
-    </td>
-    <td width="50%" valign="top">
-      <p align="center"><b>站点</b></p>
-      <img src="docs/sites.png" width="100%" alt="站点管理：主回源与播放分流">
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <p align="center"><b>流量</b></p>
-      <img src="docs/traffic.png" width="100%" alt="独立流量页：按站点看入站/出站">
-    </td>
-    <td width="50%" valign="top">
-      <p align="center"><b>诊断</b></p>
-      <img src="docs/diagnostics.png" width="100%" alt="故障诊断：回源、证书、本地监听">
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/theme-split.png" width="100%" alt="StreamDock 仪表盘：对角深浅对比">
+</p>
+
+<p align="center">
+  <img src="docs/theme-split-sites.png" width="100%" alt="StreamDock 站点管理：对角深浅对比">
+</p>
+
+四页都能用顶栏「亮 / 暗」切换；没有手动偏好时跟随系统。
+
+---
+
+## 它能做什么
+
+- **站点反代**：每个站点一个监听端口；API / WebSocket 走主回源，播放路径可走 playback 分流
+- **明文备份**：`导出 / 导入` 站点 JSON（`streamdock-v1`）；只新建、不覆盖；端口冲突跳过
+- **独立流量页**：按站点看入站 / 出站，不塞进仪表盘
+- **故障诊断**：回源可达、证书、本地监听
+- **亮暗主题**：同一套 CSS 变量 remap；偏好写在 `localStorage`
 
 ---
 
 ## 和上游差在哪
 
-本仓是 [snnabb/Meridian](https://github.com/snnabb/Meridian) 的 fork。相对 **当前** 上游（v1.12.4），不要把「分离推流」当成独有功能——上游站点模型里已经有 `playback_target_url` / `playback_mode` / `stream_hosts`。
+本仓是 [snnabb/Meridian](https://github.com/snnabb/Meridian) 的 fork。相对 **当前** 上游（v1.12.x），不要把「分离推流」当成独有功能——上游站点模型里已经有 `playback_target_url` / `playback_mode` / `stream_hosts`。
 
 | 能力 | 本仓 | 上游 |
 |------|------|------|
-| 明文站点 JSON 导出 / 导入 | 有。`GET /api/sites/export`、`POST /api/sites/import`，只新建不覆盖 | 没有这一对接口。上游是加密全量备份 |
-| 独立流量页 `#traffic` | 有 | `#traffic` 并进仪表盘 |
-| 分离推流（API 走主回源，播放走 playback） | 有，实现更窄 | 同样有这些字段，还有更完整的发现/改写 |
-| 单文件 Go + 四页原生前端 | 有意保持 | 已拆到 `cmd/meridian/`，页面更多 |
+| 明文站点 JSON 导出 / 导入 | 有。`GET /api/sites/export`、`POST /api/sites/import` | 加密全量备份 |
+| 独立流量页 `#traffic` | 有 | 并进仪表盘 |
+| Topology Worksheet 亮 / 暗 | 有 | — |
+| 分离推流 | 有，实现更窄 | 字段更全，发现 / 改写更完整 |
+| 单文件 Go + 原生前端 | 有意保持 | 已拆到 `cmd/meridian/`，页面更多 |
 
-备份是明文站点配置（含回源 URL），不含用户、流量或 JWT。新导出 `version` 为 `streamdock-v1`；旧文件 `meridian-v1` 仍能导入。
+备份是明文站点配置（含回源 URL），不含用户、流量或 JWT。旧文件 `meridian-v1` 仍能导入。
 
 ---
 
 ## 它怎么跑
 
 <p align="center">
-  <img src="./assets/readme/flow.svg" width="100%" alt="先 clone 当前 GitHub 仓库，再 go build -o streamdock，添加站点，最后导出 JSON 备份">
+  <img src="./assets/readme/flow.svg" width="100%" alt="clone → go build → 添加站点 → 导出 JSON 备份">
 </p>
 
-管理面默认听 `127.0.0.1:9090`。每个站点另开一个端口给 Emby 客户端：API / WebSocket 走 `target_url`，命中播放路径时走 `playback_target_url` 和 `stream_hosts`。
+管理面默认听 `127.0.0.1:9090`。每个站点另开端口给 Emby 客户端。
 
 ---
 
 ## 先跑起来
 
-克隆：
+### 二进制（推荐）
+
+从 [Releases](https://github.com/tsumon/StreamDock/releases/latest) 下载对应平台的 `streamdock-*`：
+
+```bash
+chmod +x streamdock-linux-amd64
+JWT_SECRET=$(openssl rand -hex 32) SETUP_TOKEN=$(openssl rand -hex 32) ./streamdock-linux-amd64
+```
+
+### 源码
 
 ```bash
 git clone https://github.com/tsumon/StreamDock.git
@@ -82,6 +90,14 @@ JWT_SECRET=$(openssl rand -hex 32) SETUP_TOKEN=$(openssl rand -hex 32) ./streamd
 ```
 
 打开 `http://127.0.0.1:9090`。空库第一次创建管理员需要启动日志里的 `SETUP_TOKEN`。
+
+### 安装脚本
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/tsumon/StreamDock/main/install.sh)
+```
+
+脚本从 GitHub Releases 拉二进制。systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。
 
 ### Docker
 
@@ -93,7 +109,7 @@ docker run -d --name streamdock \
   ghcr.io/tsumon/streamdock:latest
 ```
 
-镜像名是 `ghcr.io/tsumon/streamdock`，不跟 GitHub 仓库名走。容器网络里面板默认绑 `0.0.0.0`。
+镜像名是 `ghcr.io/tsumon/streamdock`。容器里面板默认绑 `0.0.0.0`。
 
 ```yaml
 services:
@@ -112,14 +128,6 @@ volumes:
   streamdock-data:
 ```
 
-源码安装脚本仍从本仓拉取：
-
-```bash
-bash <(curl -sL https://raw.githubusercontent.com/tsumon/StreamDock/main/install.sh)
-```
-
-systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。安装脚本从 GitHub Releases 拉二进制；没有可用 Release 时会提示改用 Docker 或源码构建。
-
 ---
 
 ## 配置
@@ -128,6 +136,7 @@ systemd unit 是 `streamdock.service`，数据目录 `/opt/streamdock`。安装�
 ./streamdock                          # 默认 127.0.0.1:9090，数据库 streamdock.db
 ./streamdock --port 8080
 ./streamdock --db /data/streamdock.db
+./streamdock --version
 ```
 
 | 变量 | 默认 | 说明 |

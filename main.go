@@ -66,7 +66,7 @@ func getUAProfile(mode string) UAProfile {
 var jwtSecret []byte
 var jwtSecretEphemeral bool
 
-var appVersion = "v1.3.1"
+var appVersion = "v1.4.0"
 
 const (
 	sessionCookieName      = "streamdock_session"
