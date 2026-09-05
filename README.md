@@ -8,6 +8,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
 </p>
 
+**Emby 反向代理管理面板**
+
 **StreamDock** 是一个单二进制 Emby 反向代理管理面板：浏览器里管站点，SQLite 落盘，前端嵌在同一个进程里。
 
 GitHub 仓库是 [`tsumon/StreamDock`](https://github.com/tsumon/StreamDock)。仓库与产品名均为 StreamDock。
