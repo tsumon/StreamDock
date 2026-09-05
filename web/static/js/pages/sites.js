@@ -60,7 +60,7 @@ async function loadSites() {
       grid.innerHTML = UI.empty({
         wide: true,
         title: '还没有站点',
-        body: '添加一个 Emby 反代，或导入之前导出的 JSON 备份。导入只新建、不覆盖；端口冲突会跳过。',
+        body: '添加反代，或导入 JSON。',
         actions: [
           { id: 'add', label: '添加站点', className: 'btn-primary' },
           { id: 'import', label: '导入配置', className: 'btn-secondary' },
@@ -431,6 +431,24 @@ async function exportSitesConfig() {
   }
 }
 
+function renderImportSkipList(items) {
+  const existing = document.getElementById('import-skip-list');
+  if (!items || !items.length) {
+    if (existing) existing.remove();
+    return;
+  }
+  const rows = items.map((item) => {
+    const port = item.listen_port ? `:${esc(String(item.listen_port))}` : '';
+    return `<li><span class="mono">${port}</span> ${esc(item.name || '(未命名)')} — ${esc(item.reason || '已跳过')}</li>`;
+  }).join('');
+  const html = `<div class="import-skip-list" id="import-skip-list"><p>跳过 ${items.length} 个</p><ul>${rows}</ul></div>`;
+  if (existing) {
+    existing.outerHTML = html;
+    return;
+  }
+  document.querySelector('#page-sites .page-toolbar')?.insertAdjacentHTML('afterend', html);
+}
+
 async function importSitesConfig(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -465,7 +483,7 @@ async function importSitesConfig(e) {
   document.getElementById('modal-body').innerHTML = `
     <p style="color:var(--ink-secondary);margin-bottom:12px">将导入 <strong>${sites.length}</strong> 个站点。只新建，不覆盖已有配置。</p>
     <pre class="import-preview">${esc(names)}</pre>
-    <p class="form-help" style="margin-top:10px">监听端口冲突的条目会跳过。</p>
+    <p class="form-help" style="margin-top:10px">端口冲突或字段不全会跳过，并列出原因。</p>
   `;
   document.getElementById('modal-footer').innerHTML = `
     <button type="button" class="btn-modal secondary" onclick="closeModal()">取消</button>
@@ -487,8 +505,18 @@ async function importSitesConfig(e) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '导入失败');
       closeModal();
+      const skippedItems = Array.isArray(data.skipped_items) ? data.skipped_items : [];
       Toast.success('导入 ' + data.created + ' 个站点' + (data.skipped > 0 ? '，跳过 ' + data.skipped + ' 个' : ''));
+      if (skippedItems.length) {
+        const lines = skippedItems.map((item) => {
+          const name = item.name || '(未命名)';
+          const port = item.listen_port ? ':' + item.listen_port : '';
+          return name + port + ' — ' + (item.reason || '已跳过');
+        });
+        Toast.info('跳过：\n' + lines.join('\n'), 8000);
+      }
       loadSites();
+      renderImportSkipList(skippedItems);
     } catch (err) {
       Toast.error('导入失败：' + err.message);
       btn.disabled = false;

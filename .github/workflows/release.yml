@@ -44,6 +44,9 @@ jobs:
             goarch: amd64
             suffix: windows-amd64.exe
           - goos: darwin
+            goarch: amd64
+            suffix: darwin-amd64
+          - goos: darwin
             goarch: arm64
             suffix: darwin-arm64
 
@@ -59,12 +62,25 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
-        run: go build -ldflags="-s -w" -o streamdock-${{ matrix.suffix }} .
+        run: go build -ldflags="-s -w -X main.appVersion=${GITHUB_REF_NAME}" -o streamdock-${{ matrix.suffix }} .
+
+      - name: Windows zip
+        if: matrix.goos == 'windows'
+        run: |
+          mkdir -p dist-win
+          cp "streamdock-${{ matrix.suffix }}" dist-win/streamdock.exe
+          (cd dist-win && zip -9 ../streamdock-windows-amd64.zip streamdock.exe)
 
       - uses: actions/upload-artifact@v4
         with:
           name: streamdock-${{ matrix.suffix }}
           path: streamdock-${{ matrix.suffix }}
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.goos == 'windows'
+        with:
+          name: streamdock-windows-amd64.zip
+          path: streamdock-windows-amd64.zip
 
   release:
     needs: build
@@ -76,14 +92,22 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
+      - uses: actions/checkout@v5
+
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
 
+      - name: Checksums
+        run: sha256sum streamdock-* | tee sha256sums.txt
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: streamdock-*
+          files: |
+            streamdock-*
+            sha256sums.txt
+          body_path: RELEASE_NOTES.md
           generate_release_notes: true
 
   docker:
@@ -108,6 +132,8 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           push: true
+          build-args: |
+            VERSION=${{ github.ref_name }}
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.ref_name }}

@@ -12,7 +12,7 @@ const Toast = {
       setTimeout(() => el.remove(), 180);
     }, duration || 3000);
   },
-  success(msg) { this.show(msg, 'success'); },
-  error(msg) { this.show(msg, 'error', 5000); },
-  info(msg) { this.show(msg, 'info'); },
+  success(msg, duration) { this.show(msg, 'success', duration); },
+  error(msg, duration) { this.show(msg, 'error', duration || 5000); },
+  info(msg, duration) { this.show(msg, 'info', duration); },
 };

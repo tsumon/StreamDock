@@ -73,11 +73,24 @@ do_install() {
 
     url="https://github.com/${REPO}/releases/download/${version}/${BIN_NAME}-${suffix}"
     info "下载 $url ..."
-    curl -fSL -o "/tmp/${BIN_NAME}" "$url" || fail "下载失败"
-    chmod +x "/tmp/${BIN_NAME}"
+    curl -fSL -o "/tmp/${BIN_NAME}-${suffix}" "$url" || fail "下载失败"
+
+    local sums_url="https://github.com/${REPO}/releases/download/${version}/sha256sums.txt"
+    if curl -fsSL -o /tmp/streamdock-sha256sums.txt "$sums_url"; then
+        info "校验 sha256sums.txt ..."
+        if ! grep -E "[[:space:]]${BIN_NAME}-${suffix}$" /tmp/streamdock-sha256sums.txt > /tmp/streamdock-sha256.one; then
+            fail "sha256sums.txt 里没有 ${BIN_NAME}-${suffix}"
+        fi
+        (cd /tmp && sha256sum -c streamdock-sha256.one) || fail "校验和不匹配"
+        ok "校验通过"
+    else
+        warn "这个 Release 没有 sha256sums.txt，跳过校验"
+    fi
+
+    chmod +x "/tmp/${BIN_NAME}-${suffix}"
 
     info "安装到 ${INSTALL_DIR}/${BIN_NAME} ..."
-    sudo mv "/tmp/${BIN_NAME}" "${INSTALL_DIR}/${BIN_NAME}"
+    sudo mv "/tmp/${BIN_NAME}-${suffix}" "${INSTALL_DIR}/${BIN_NAME}"
     ok "二进制已安装"
 
     # Create data directory and system user

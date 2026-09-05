@@ -48,8 +48,8 @@ async function loadTrafficSites() {
     if (!sites || sites.length === 0) {
       sel.innerHTML = '<option value="">暂无站点</option>';
       body.innerHTML = UI.empty({
-        title: '还没有站点可统计',
-        body: '先到站点管理添加一个反代，流量才会按站点记下来。',
+        title: '还没有流量',
+        body: '先添加站点。',
         actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
       });
       body.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));
@@ -182,7 +182,7 @@ function drawTrafficChart(logs, hours) {
     const yy = pad.top + (i / 4) * ch;
     ctx.beginPath(); ctx.moveTo(pad.left, yy); ctx.lineTo(w - pad.right, yy); ctx.stroke();
     ctx.fillStyle = colors.inkMuted;
-    ctx.font = '11px "Source Sans 3", "Noto Sans SC", system-ui';
+    ctx.font = '11px system-ui, "Segoe UI", "PingFang SC", sans-serif';
     ctx.textAlign = 'right';
     const value = (4 - i) / 4 * (logs.length === 0 ? 0 : maxV);
     ctx.fillText(axisLabel(value) + ' MB', pad.left - 12, yy + 4);
@@ -190,7 +190,7 @@ function drawTrafficChart(logs, hours) {
 
   if (logs.length === 0) {
     ctx.fillStyle = colors.inkMuted;
-    ctx.font = '14px "Source Sans 3", "Noto Sans SC", system-ui';
+    ctx.font = '14px system-ui, "Segoe UI", "PingFang SC", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('这段时间没有流量记录', w / 2, h / 2);
     return;

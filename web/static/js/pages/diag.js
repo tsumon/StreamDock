@@ -16,7 +16,7 @@ function renderDiag() {
       ${UI.empty({
         wide: true,
         title: '还没有诊断结果',
-        body: '选择站点后点「开始诊断」。会探测主回源、播放回源、证书和本地监听。',
+        body: '选站点，点「开始诊断」。',
       })}
     </div>
   `;
@@ -34,8 +34,8 @@ async function loadDiagSites() {
       sel.innerHTML = '<option value="">暂无站点</option>';
       grid.innerHTML = UI.empty({
         wide: true,
-        title: '还没有站点可诊断',
-        body: '先到站点管理添加一个反代。',
+        title: '还没有站点',
+        body: '先添加反代。',
         actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
       });
       grid.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));

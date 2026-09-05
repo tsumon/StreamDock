@@ -796,6 +796,33 @@ func TestDockerfileAndReleaseDoNotPushUpstreamImage(t *testing.T) {
 	if !bytes.Contains(ci, []byte("branches: ['main']")) {
 		t.Fatal("ci.yml must listen on main")
 	}
+
+	fromCount := 0
+	for _, line := range strings.Split(string(dockerfile), "\n") {
+		trim := strings.TrimSpace(line)
+		if !strings.HasPrefix(trim, "FROM ") {
+			continue
+		}
+		fromCount++
+		if !strings.Contains(trim, "@sha256:") {
+			t.Fatalf("Dockerfile FROM must be digest-pinned: %s", trim)
+		}
+	}
+	if fromCount < 2 {
+		t.Fatalf("Dockerfile FROM count = %d, want at least builder + runtime", fromCount)
+	}
+	if !bytes.Contains(release, []byte("darwin-amd64")) {
+		t.Fatal("release.yml must include darwin-amd64")
+	}
+	if !bytes.Contains(release, []byte("streamdock-windows-amd64.zip")) {
+		t.Fatal("release.yml must ship streamdock-windows-amd64.zip")
+	}
+	if !bytes.Contains(release, []byte("sha256sums.txt")) {
+		t.Fatal("release.yml must attach sha256sums.txt")
+	}
+	if !bytes.Contains(release, []byte("body_path: RELEASE_NOTES.md")) {
+		t.Fatal("release.yml must use handwritten Chinese RELEASE_NOTES.md")
+	}
 }
 
 func TestResolveJWTSecretRejectsShortValue(t *testing.T) {
@@ -946,6 +973,18 @@ func TestHandleSitesExportImportAndPortConflictSkip(t *testing.T) {
 	conflictBody := decodeBody(t, conflict)
 	if mustNumberValue(t, conflictBody, "created") != 0 || mustNumberValue(t, conflictBody, "skipped") != 1 {
 		t.Fatalf("port conflict import = %#v, want created=0 skipped=1", conflictBody)
+	}
+	items, _ := conflictBody["skipped_items"].([]interface{})
+	if len(items) != 1 {
+		t.Fatalf("skipped_items = %#v, want 1 entry", conflictBody["skipped_items"])
+	}
+	item, _ := items[0].(map[string]interface{})
+	if item["name"] != "alpha" {
+		t.Fatalf("skipped name = %#v", item)
+	}
+	reason, _ := item["reason"].(string)
+	if !strings.Contains(reason, "端口") {
+		t.Fatalf("skipped reason = %q, want 端口", reason)
 	}
 
 	fresh := newTestApp(t)
@@ -1137,6 +1176,97 @@ func lenMust(sites []Site, err error) int {
 		panic(err)
 	}
 	return len(sites)
+}
+
+func TestRequestClientKeyIgnoresForwardedHeadersByDefault(t *testing.T) {
+	prev := trustedProxyNets
+	t.Cleanup(func() { trustedProxyNets = prev })
+	trustedProxyNets = nil
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "198.51.100.10:12345"
+	req.Header.Set("X-Real-IP", "203.0.113.9")
+	req.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.1")
+	if got := requestClientKey(req); got != "198.51.100.10" {
+		t.Fatalf("untrusted peer client = %q, want 198.51.100.10", got)
+	}
+}
+
+func TestRequestClientKeyUsesForwardedHeadersFromTrustedProxy(t *testing.T) {
+	prev := trustedProxyNets
+	t.Cleanup(func() { trustedProxyNets = prev })
+	nets, err := parseTrustedProxyCIDRs("10.0.0.0/8")
+	if err != nil {
+		t.Fatalf("parseTrustedProxyCIDRs: %v", err)
+	}
+	trustedProxyNets = nets
+
+	realIP := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	realIP.RemoteAddr = "10.1.2.3:443"
+	realIP.Header.Set("X-Real-IP", "203.0.113.9")
+	if got := requestClientKey(realIP); got != "203.0.113.9" {
+		t.Fatalf("X-Real-IP client = %q, want 203.0.113.9", got)
+	}
+
+	xff := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	xff.RemoteAddr = "10.1.2.3:443"
+	xff.Header.Set("X-Forwarded-For", "203.0.113.80, 10.1.2.3")
+	if got := requestClientKey(xff); got != "203.0.113.80" {
+		t.Fatalf("X-Forwarded-For client = %q, want 203.0.113.80", got)
+	}
+}
+
+func TestParseTrustedProxyCIDRsRejectsGarbage(t *testing.T) {
+	if _, err := parseTrustedProxyCIDRs("not-a-cidr"); err == nil {
+		t.Fatal("expected invalid TRUSTED_PROXY_CIDRS to fail")
+	}
+	nets, err := parseTrustedProxyCIDRs("")
+	if err != nil || nets != nil {
+		t.Fatalf("empty CIDRs = %v err=%v, want nil", nets, err)
+	}
+}
+
+func TestPanelCSPOmitsGoogleFonts(t *testing.T) {
+	if strings.Contains(panelCSP, "fonts.googleapis") || strings.Contains(panelCSP, "fonts.gstatic") {
+		t.Fatalf("panelCSP still allows Google Fonts: %s", panelCSP)
+	}
+	handler := securityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	csp := rr.Header().Get("Content-Security-Policy")
+	if strings.Contains(csp, "fonts.googleapis") || strings.Contains(csp, "fonts.gstatic") {
+		t.Fatalf("response CSP still allows Google Fonts: %s", csp)
+	}
+	if csp != panelCSP {
+		t.Fatalf("CSP = %q, want panelCSP", csp)
+	}
+}
+
+func TestHandleSitesImportReportsMissingFields(t *testing.T) {
+	app := newTestApp(t)
+	rr := httptest.NewRecorder()
+	app.handleSitesImport(rr, httptest.NewRequest(http.MethodPost, "/api/sites/import", strings.NewReader(`{
+		"version": "streamdock-v1",
+		"sites": [{"name":"","listen_port":0,"target_url":""}]
+	}`)))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	body := decodeBody(t, rr)
+	if mustNumberValue(t, body, "skipped") != 1 {
+		t.Fatalf("skipped = %#v", body)
+	}
+	items, _ := body["skipped_items"].([]interface{})
+	if len(items) != 1 {
+		t.Fatalf("skipped_items = %#v", body["skipped_items"])
+	}
+	item, _ := items[0].(map[string]interface{})
+	reason, _ := item["reason"].(string)
+	if !strings.Contains(reason, "缺少") {
+		t.Fatalf("reason = %q", reason)
+	}
 }
 
 func jsonNumber(v int) string {

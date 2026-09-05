@@ -191,7 +191,7 @@ async function loadDashboardTable() {
     if (!sites || sites.length === 0) {
       topo.innerHTML = UI.empty({
         title: '还没有站点',
-        body: '添加一个反代后，这里会画出主回源和播放两条路径。',
+        body: '去站点管理添加第一个反代。',
         actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
       });
       topo.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));

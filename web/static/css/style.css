@@ -58,7 +58,7 @@ html[data-theme="light"] {
   --surface: var(--sheet);
   --surface-hover: #eef2f5;
   --surface-active: #e4eaef;
-  --font: "Source Sans 3", "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+  --font: system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", "Noto Sans Mono", monospace;
   --grid-size: 20px;
   --select-chevron: url("data:image/svg+xml,%3Csvg width='10' height='6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23334654' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -513,7 +513,7 @@ input, textarea { caret-color: var(--playback); }
 .theme-switch-btn {
   min-height: 32px;
   min-width: 32px;
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -1198,6 +1198,25 @@ canvas#trafficChart { width: 100% !important; height: 260px !important; display:
   line-height: 1.6;
   font-family: var(--mono);
 }
+.import-skip-list {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  background: var(--sheet);
+  color: var(--ink-secondary);
+  font-size: 0.82rem;
+}
+.import-skip-list p {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.import-skip-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.import-skip-list li + li { margin-top: 6px; }
 
 /* Toast */
 #toast-container {
@@ -1216,11 +1235,12 @@ canvas#trafficChart { width: 100% !important; height: 260px !important; display:
   font-size: 0.82rem;
   font-weight: 500;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   animation: toastIn var(--duration) var(--ease);
   min-width: 260px;
-  max-width: 360px;
+  max-width: 420px;
+  white-space: pre-line;
   border: 1px solid var(--ink);
   background: var(--sheet);
   box-shadow: var(--shadow-menu);

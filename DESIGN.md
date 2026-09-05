@@ -48,43 +48,43 @@ colors:
   surface-active-dark: "#2c3840"
 typography:
   display:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "1.7rem"
     fontWeight: 700
     lineHeight: 1.15
     letterSpacing: "-0.02em"
   headline:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "1.45rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "-0.02em"
   title:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "0.95rem"
     fontWeight: 700
     lineHeight: 1.3
     letterSpacing: "normal"
   figure:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "1.15rem"
     fontWeight: 700
     lineHeight: 1.15
     letterSpacing: "-0.02em"
   body:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "0.85rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
   label:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: "normal"
   edge-key:
-    fontFamily: "Source Sans 3, Noto Sans SC, Source Han Sans SC, system-ui, sans-serif"
+    fontFamily: "system-ui, Segoe UI, PingFang SC, Hiragino Sans GB, Noto Sans SC, Microsoft YaHei, sans-serif"
     fontSize: "0.68rem"
     fontWeight: 700
     lineHeight: 1.2
@@ -184,15 +184,15 @@ components:
 
 StreamDock is a network worksheet, not a cinema console. Cool fluorescent paper carries a 20px drafting-blue grid; white sheets and navy-ink boxes sit on that field like annotations on a plot plan. Each site is a node with two outbound edges — drafting-blue for API, copper for playback — so the operator can see where traffic actually goes without decoding four hero tiles.
 
-The panel is an Operate surface for a homelab desk: dense, bilingual (Source Sans 3 with Noto Sans SC), and built from native controls. Title-block chrome is a paper strip ruled with a 2px ink line. Depth is stroke, not glow. Dark is the same worksheet at night — cool slate paper, still a 20px grid — not a second product. The discarded world — The Dark Glass Console, Inter, cinema black, system blue `#0A84FF`, glass bars — is an anti-reference, not a fallback.
+The panel is an Operate surface for a homelab desk: dense, bilingual (system UI stack with PingFang / Noto Sans SC), and built from native controls. Title-block chrome is a paper strip ruled with a 2px ink line. Depth is stroke, not glow. Dark is the same worksheet at night — cool slate paper, still a 20px grid — not a second product. The discarded world — The Dark Glass Console, Inter, cinema black, system blue `#0A84FF`, glass bars — is an anti-reference, not a fallback.
 
 **Key Characteristics:**
 - Fluorescent paper canvas with a fixed 20px drafting grid (cool slate paper after dark)
 - Navy ink as type, chrome rule, and primary fill; copper reserved for the playback route and focus
 - 2–6px drafting corners; square datasheet bands (spec strip, traffic totals)
 - Two named route colors, never a third “accent”
-- Source Sans 3 + Noto Sans SC at a 15px root; tabular/mono only for machine strings
-- One token set, two values: `html[data-theme="light"|"dark"]` remaps `--paper` `--ink` `--api` `--playback`
+- System UI stack (Segoe UI / PingFang SC / Noto Sans SC) at a 15px root; no remote webfonts; tabular/mono only for machine strings
+- One token set, two values: `html[data-theme="light"|"dark"]` remaps `--paper` `--ink` `--api` `--playback`. Preference is `light|dark|system` in `localStorage`; missing key = system.
 
 ## Colors
 
@@ -232,8 +232,8 @@ A cool paper field, navy ink, one drafting-blue route, one copper route, and mut
 
 ## Typography
 
-**Display Font:** Source Sans 3 (with Noto Sans SC / Source Han Sans SC)
-**Body Font:** Source Sans 3 (same pairing)
+**Display Font:** system-ui / Segoe UI / PingFang SC / Noto Sans SC
+**Body Font:** same stack
 **Label/Mono Font:** ui-monospace / SF Mono / Cascadia Code / Noto Sans Mono
 
 **Character:** An operate sans: tight but not compressed, bilingual, no display serif and no Inter. Chinese and Latin share one ramp. Machine strings (ports, URLs, bytes) drop to tabular mono.
@@ -251,7 +251,7 @@ Root size is 15px; body line-height is 1.5. Page titles track −0.02em.
 - **Mono** (400, 0.75rem, tabular-nums): Listen ports, upstream URLs, import previews.
 
 ### Named Rules
-**The Operate Scale Rule.** Source Sans 3 + Noto Sans SC carry every human string. No Inter, no system display face, no all-caps chrome.
+**The Operate Scale Rule.** The system UI stack carries every human string. No Inter, no Google Fonts, no all-caps chrome. Self-hosted or remote webfonts are out so the panel CSP can stay `font-src 'self'`.
 
 **The Tabular Port Rule.** Ports, bytes, uptime, and edge URLs are tabular/mono. Site names stay in the sans.
 
@@ -328,7 +328,7 @@ Controls feel like labeled instruments on a worksheet: ink fill for the one comm
 - **Title block:** 52px paper+grid, 2px ink bottom, StreamDock wordmark 1rem / 700, 22px mark.
 - **Tabs:** 0.85rem / 500 secondary ink, 16px horizontal padding. Active: ink, 600, 2px copper underline that shares the chrome rule.
 - **Account:** 32px 2px-radius ink square with sheet initial.
-- **Theme switch:** Title-block instrument in `.topnav-right`, left of the account button; duplicated on the login card. Two 32px ghost cells, 2px corners, labels `亮` / `暗`. Not a glass capsule. `html[data-theme]` + `localStorage` (`streamdock-theme`); no stored value follows `prefers-color-scheme`. `color-scheme` and `theme-color` follow the resolved theme.
+- **Theme switch:** Title-block instrument in `.topnav-right`, left of the account button; duplicated on the login card. Three 32px ghost cells, 2px corners, labels `亮` / `暗` / `系统`. Not a glass capsule. Stored preference is `light|dark|system` in `localStorage` (`streamdock-theme`); missing key = `system`. `html[data-theme]` is only the resolved `light|dark`. `aria-pressed` tracks the preference, not the resolved theme. `color-scheme` and `theme-color` follow the resolved theme.
 - **Mobile bar:** Same paper+grid, 2px ink top, 44px min tabs, 0.62rem labels, 22px stroke icons. Active is copper.
 
 ### Spec strip
@@ -347,7 +347,7 @@ Native `<dialog>`. 6px sheet, 1px ink, modal shadow, max 480px. Header 16px 20px
 - **Do** draw each site as a node with an API edge and a playback edge in the two named route colors.
 - **Do** fill the one primary action with ink; keep add/export on Sites as primary + ghosts.
 - **Do** use 2–6px corners, 1px strokes, and copper only for playback + focus + active tab.
-- **Do** pair Source Sans 3 with Noto Sans SC at the 15px operate scale; mono for ports and URLs.
+- **Do** use the system UI stack at the 15px operate scale; mono for ports and URLs. No Google Fonts.
 - **Do** remap the same CSS variables for dark; keep the 20px grid, two routes, and ink-as-primary.
 
 ### Don't:
