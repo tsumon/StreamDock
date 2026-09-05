@@ -5,58 +5,46 @@ let dashRetryTimer = null;
 function renderDashboard() {
   const page = document.getElementById('page-dashboard');
   page.innerHTML = `
-    <header class="page-header fade-in">
+    <header class="page-header">
       <h1 class="section-title">仪表盘</h1>
       <p class="section-sub">反代运行摘要 <span class="live-badge is-retry" id="sse-status">连接中</span></p>
     </header>
-    <div class="stats-row" id="dash-stats">
-      <div class="stat-card c-blue">
-        <div class="stat-icon-wrap blue">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        </div>
-        <div class="stat-number" id="s-total">—</div>
-        <div class="stat-title">站点总数</div>
-      </div>
-      <div class="stat-card c-green">
-        <div class="stat-icon-wrap green">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        </div>
-        <div class="stat-number" id="s-running">—</div>
-        <div class="stat-title">运行中</div>
-      </div>
-      <div class="stat-card c-teal">
-        <div class="stat-icon-wrap teal">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        </div>
-        <div class="stat-number" id="s-traffic">0 B</div>
-        <div class="stat-title">总流量</div>
-      </div>
-      <div class="stat-card c-orange">
-        <div class="stat-icon-wrap orange">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </div>
-        <div class="stat-number" id="s-uptime">—</div>
-        <div class="stat-title">运行时长</div>
-      </div>
-    </div>
-    <div class="glass-card fade-in">
-      <div class="glass-card-header">
-        <div class="glass-card-title"><span class="live-dot" id="table-live-dot"></span>站点实时状态</div>
-        <div class="glass-card-title" style="font-size:.72rem;color:var(--ink-muted)" id="s-requests">0 请求</div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>站点</th><th>状态</th><th>主回源</th><th>播放</th><th>UA</th><th>端口</th><th>已用流量</th>
-          </tr></thead>
-          <tbody id="dash-table">${UI.skeletonRows(3, 7)}</tbody>
-        </table>
-      </div>
-    </div>
+    <dl class="spec-strip" id="dash-stats">
+      <div class="spec-cell"><dt>站点</dt><dd id="s-total">—</dd></div>
+      <div class="spec-cell"><dt>运行</dt><dd id="s-running">—</dd></div>
+      <div class="spec-cell"><dt>总流量</dt><dd id="s-traffic">0 B</dd></div>
+      <div class="spec-cell"><dt>运行时长</dt><dd id="s-uptime">—</dd></div>
+    </dl>
+    <div class="topo-list" id="dash-topo">${UI.skeletonCards(2)}</div>
   `;
 
+  document.getElementById('dash-topo').addEventListener('click', onTopoClick);
+  document.getElementById('dash-topo').addEventListener('keydown', onTopoKey);
   startDashSSE();
   loadDashboardTable();
+}
+
+function onTopoClick(e) {
+  const node = e.target.closest('.topo-node');
+  if (!node) return;
+  traceTopoNode(node);
+}
+
+function onTopoKey(e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const node = e.target.closest('.topo-node');
+  if (!node) return;
+  e.preventDefault();
+  traceTopoNode(node);
+}
+
+function traceTopoNode(node) {
+  const list = document.getElementById('dash-topo');
+  if (!list) return;
+  list.querySelectorAll('.topo-node.is-traced').forEach((el) => {
+    if (el !== node) el.classList.remove('is-traced');
+  });
+  node.classList.toggle('is-traced');
 }
 
 function startDashSSE() {
@@ -66,10 +54,8 @@ function startDashSSE() {
 
 function setSseStatus(mode) {
   const statusEl = document.getElementById('sse-status');
-  const dot = document.getElementById('table-live-dot');
   if (!statusEl) return;
   statusEl.classList.remove('is-live', 'is-retry', 'is-down');
-  if (dot) dot.classList.toggle('is-live', mode === 'live');
   if (mode === 'live') {
     statusEl.classList.add('is-live');
     statusEl.textContent = '实时';
@@ -148,9 +134,6 @@ function updateDashboardLive(stats) {
 
   const uptimeEl = document.getElementById('s-uptime');
   if (uptimeEl) uptimeEl.textContent = formatUptime(stats.uptime_seconds || 0);
-
-  const requestsEl = document.getElementById('s-requests');
-  if (requestsEl) requestsEl.textContent = formatNumber(stats.total_requests || 0) + ' 请求';
 }
 
 function formatUptime(seconds) {
@@ -158,10 +141,6 @@ function formatUptime(seconds) {
   if (seconds < 3600) return Math.floor(seconds / 60) + ' 分';
   if (seconds < 86400) return Math.floor(seconds / 3600) + ' 时 ' + Math.floor((seconds % 3600) / 60) + ' 分';
   return Math.floor(seconds / 86400) + ' 天 ' + Math.floor((seconds % 86400) / 3600) + ' 时';
-}
-
-function formatNumber(n) {
-  return n.toLocaleString();
 }
 
 function animateValue(id, newVal) {
@@ -193,54 +172,58 @@ function stopDashSSE() {
   }
 }
 
-function sitePlaybackLabel(s) {
+function sitePlaybackEdge(s) {
   const playback = (s.playback_target_url || '').trim();
   let extra = [];
   try { extra = JSON.parse(s.stream_hosts || '[]'); } catch (e) {}
   const total = (playback ? 1 : 0) + extra.length;
-  if (total === 0) return '<span class="pill pill-muted">跟随主回源</span>';
-  if (total === 1 && playback === (s.target_url || '').trim()) {
-    return '<span class="pill pill-muted">与主回源相同</span>';
-  }
-  const mode = s.playback_mode === 'redirect' ? '重定向跟随' : '直连分流';
-  return `<span class="pill pill-blue">${mode}</span>`;
+  if (total === 0) return '跟随主回源';
+  if (total === 1 && playback === (s.target_url || '').trim()) return '与主回源相同';
+  return playback || extra[0] || '已分流';
 }
 
 async function loadDashboardTable() {
-  const tbody = document.getElementById('dash-table');
-  if (!tbody) return;
+  const topo = document.getElementById('dash-topo');
+  if (!topo) return;
 
   try {
     const sites = await API.listSites();
     if (!sites || sites.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7">${UI.empty({
-        inline: true,
+      topo.innerHTML = UI.empty({
         title: '还没有站点',
-        body: '添加一个反代后，这里会显示运行状态、回源和流量。',
+        body: '添加一个反代后，这里会画出主回源和播放两条路径。',
         actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
-      })}</td></tr>`;
-      tbody.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));
+      });
+      topo.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));
       return;
     }
 
-    tbody.innerHTML = sites.map(s => `
-      <tr>
-        <td style="font-weight:600">${esc(s.name)}</td>
-        <td><span class="status-badge"><span class="status-led ${s.running ? 'on' : 'off'}"></span>${s.running ? '运行中' : '已停止'}</span></td>
-        <td class="mono">${esc(s.target_url)}</td>
-        <td>${sitePlaybackLabel(s)}</td>
-        <td><span class="pill ${uaClassMap[s.ua_mode] || 'pill-blue'}">${uaNameMap[s.ua_mode] || s.ua_mode}</span></td>
-        <td class="mono">:${s.listen_port}</td>
-        <td>${formatBytes(s.traffic_used)}</td>
-      </tr>
+    topo.innerHTML = sites.map((s, i) => `
+      <article class="topo-node${i === 0 ? ' is-traced' : ''}" tabindex="0" data-id="${s.id}">
+        <div class="topo-endlabel">
+          <span class="topo-name">${esc(s.name)}</span>
+          <div class="topo-endmeta">
+            <span class="mono">:${s.listen_port}</span>
+            <span class="status-led ${s.running ? 'on' : 'off'}" title="${s.running ? '运行中' : '已停止'}"></span>
+          </div>
+        </div>
+        <div class="topo-edges">
+          <div class="edge api">
+            <span class="edge-key">API</span>
+            <span class="edge-line" aria-hidden="true"></span>
+            <span class="mono" title="${esc(s.target_url)}">${esc(s.target_url)}</span>
+          </div>
+          <div class="edge playback">
+            <span class="edge-key">播放</span>
+            <span class="edge-line" aria-hidden="true"></span>
+            <span class="mono">${esc(sitePlaybackEdge(s))}</span>
+          </div>
+        </div>
+      </article>
     `).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7">${UI.error({
-      inline: true,
-      body: e.message,
-      retry: true,
-    })}</td></tr>`;
-    tbody.querySelector('[data-error-retry]')?.addEventListener('click', loadDashboardTable);
+    topo.innerHTML = UI.error({ body: e.message, retry: true });
+    topo.querySelector('[data-error-retry]')?.addEventListener('click', loadDashboardTable);
   }
 }
 

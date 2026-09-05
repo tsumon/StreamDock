@@ -2,24 +2,22 @@
 function renderDiag() {
   const page = document.getElementById('page-diagnostics');
   page.innerHTML = `
-    <header class="page-header fade-in">
+    <header class="page-header">
       <h1 class="section-title">故障诊断</h1>
       <p class="section-sub">探测主回源、播放回源、上游证书和本地监听。健康不等于业务可用。</p>
     </header>
-    <div class="diag-toolbar fade-in">
+    <div class="diag-toolbar">
       <select class="form-select" id="diag-select" aria-label="选择站点">
         <option value="">加载中…</option>
       </select>
       <button type="button" class="btn-scan" id="btn-scan">开始诊断</button>
     </div>
     <div class="diag-grid" id="diag-grid">
-      <div class="diag-card diag-card-wide">
-        ${UI.empty({
-          inline: true,
-          title: '还没有诊断结果',
-          body: '选择站点后点「开始诊断」。会探测主回源、播放回源、证书和本地监听。',
-        })}
-      </div>
+      ${UI.empty({
+        wide: true,
+        title: '还没有诊断结果',
+        body: '选择站点后点「开始诊断」。会探测主回源、播放回源、证书和本地监听。',
+      })}
     </div>
   `;
 
@@ -34,23 +32,23 @@ async function loadDiagSites() {
     const sites = await API.listSites();
     if (!sites || sites.length === 0) {
       sel.innerHTML = '<option value="">暂无站点</option>';
-      grid.innerHTML = `<div class="diag-card diag-card-wide">${UI.empty({
-        inline: true,
+      grid.innerHTML = UI.empty({
+        wide: true,
         title: '还没有站点可诊断',
         body: '先到站点管理添加一个反代。',
         actions: [{ id: 'goto-sites', label: '前往站点管理', className: 'btn-primary' }],
-      })}</div>`;
+      });
       grid.querySelector('[data-empty-action="goto-sites"]')?.addEventListener('click', () => Router.navigate('sites'));
       return;
     }
     sel.innerHTML = sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
   } catch (e) {
     sel.innerHTML = '<option value="">加载失败</option>';
-    grid.innerHTML = `<div class="diag-card diag-card-wide">${UI.error({
-      inline: true,
+    grid.innerHTML = UI.error({
+      wide: true,
       body: e.message,
       retry: true,
-    })}</div>`;
+    });
     grid.querySelector('[data-error-retry]')?.addEventListener('click', loadDiagSites);
   }
 }
@@ -197,8 +195,8 @@ function renderTLSCard(title, subtitle, upstream) {
   return `
     <div class="diag-card">
       <div class="diag-head">
-        <div class="diag-icon" style="background:rgba(10,132,255,.15)">
-          <svg viewBox="0 0 24 24" style="stroke:var(--primary)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="diag-icon" style="background:var(--api-dim)">
+          <svg viewBox="0 0 24 24" style="stroke:var(--api)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <div>
           <div class="diag-title">${title}</div>

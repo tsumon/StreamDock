@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StreamDock — Emby 反代管理面板</title>
 <meta name="description" content="StreamDock 轻量级 Emby 反向代理管理面板">
+<meta name="theme-color" content="#F4F6F8">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -46,7 +47,7 @@
 <div id="app-shell">
 
   <nav class="topnav" aria-label="主导航">
-    <div class="topnav-brand"><img src="/favicon.svg" alt="" class="topnav-logo">StreamDock</div>
+    <div class="topnav-brand"><img src="/favicon.svg" alt="" class="topnav-logo"><span>StreamDock</span></div>
     <div class="topnav-links">
       <a href="#dashboard" class="topnav-link active" data-page="dashboard">仪表盘</a>
       <a href="#sites" class="topnav-link" data-page="sites">站点管理</a>
@@ -96,7 +97,9 @@
     <div class="modal">
       <div class="modal-header">
         <h3 id="modal-title"></h3>
-        <button type="button" class="modal-close" id="modal-close" aria-label="关闭">✕</button>
+        <button type="button" class="modal-close" id="modal-close" aria-label="关闭">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>
+        </button>
       </div>
       <div class="modal-body" id="modal-body"></div>
       <div class="modal-footer" id="modal-footer"></div>

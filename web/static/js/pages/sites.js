@@ -2,11 +2,11 @@
 function renderSites() {
   const page = document.getElementById('page-sites');
   page.innerHTML = `
-    <header class="page-header fade-in">
+    <header class="page-header">
       <h1 class="section-title">站点管理</h1>
       <p class="section-sub">主回源、播放分流、监听端口与流量额度。配置可导出为明文 JSON。</p>
     </header>
-    <div class="page-toolbar fade-in">
+    <div class="page-toolbar">
       <div class="toolbar-info" id="sites-count">加载中…</div>
       <div class="toolbar-actions">
         <button type="button" class="btn-ghost" id="btn-export-sites" title="导出所有站点配置为 JSON 备份文件">
@@ -82,21 +82,24 @@ async function loadSites() {
       <article class="site-card">
         <div class="site-top">
           <div class="site-name">${esc(s.name)}</div>
-          <span class="status-badge">
-            <span class="status-led ${s.running ? 'on' : 'off'}"></span>
-            ${s.running ? '运行中' : '已停止'}
-          </span>
+          <div class="topo-endmeta">
+            <span class="mono">:${s.listen_port}</span>
+            <span class="status-badge">
+              <span class="status-led ${s.running ? 'on' : 'off'}"></span>
+              ${s.running ? '运行中' : '已停止'}
+            </span>
+          </div>
         </div>
-        <div class="site-rows">
-          <div class="site-row">
-            <span class="site-row-label">主回源地址</span>
-            <span class="mono">${esc(s.target_url)}</span>
+        <div class="topo-edges" style="margin-bottom:12px">
+          <div class="edge api">
+            <span class="edge-key">API</span>
+            <span class="edge-line" aria-hidden="true"></span>
+            <span class="mono" title="${esc(s.target_url)}">${esc(s.target_url)}</span>
           </div>
           ${playbackRow}
-          <div class="site-row">
-            <span class="site-row-label">监听端口</span>
-            <span class="mono">:${s.listen_port}</span>
-          </div>
+        </div>
+        <div class="site-rows">
+          ${playbackModeRow(s)}
           <div class="site-row">
             <span class="site-row-label">UA 模式</span>
             <span class="pill ${uaClassMap[s.ua_mode] || 'pill-blue'}">${uaNameMap[s.ua_mode] || s.ua_mode}</span>
@@ -144,8 +147,9 @@ function renderPlaybackRow(site) {
 
   if (totalHosts === 0) {
     return `
-      <div class="site-row">
-        <span class="site-row-label">播放回源</span>
+      <div class="edge playback">
+        <span class="edge-key">播放</span>
+        <span class="edge-line" aria-hidden="true"></span>
         <span class="mono mono-subtle">跟随主回源</span>
       </div>
     `;
@@ -153,35 +157,47 @@ function renderPlaybackRow(site) {
 
   if (totalHosts === 1 && playback === (site.target_url || '').trim()) {
     return `
-      <div class="site-row">
-        <span class="site-row-label">播放回源</span>
+      <div class="edge playback">
+        <span class="edge-key">播放</span>
+        <span class="edge-line" aria-hidden="true"></span>
         <span class="mono mono-subtle">与主回源相同</span>
       </div>
     `;
   }
 
-  const modeLabel = site.playback_mode === 'redirect' ? '重定向跟随' : '直连分流';
   let rows = '';
   if (playback) {
     rows += `
-    <div class="site-row">
-      <span class="site-row-label">播放回源</span>
-      <span class="mono">${esc(playback)}</span>
+    <div class="edge playback">
+      <span class="edge-key">播放</span>
+      <span class="edge-line" aria-hidden="true"></span>
+      <span class="mono" title="${esc(playback)}">${esc(playback)}</span>
     </div>`;
   }
   for (const h of extraHosts) {
     rows += `
-    <div class="site-row">
-      <span class="site-row-label">额外播放回源</span>
-      <span class="mono">${esc(h)}</span>
+    <div class="edge playback">
+      <span class="edge-key">额外</span>
+      <span class="edge-line" aria-hidden="true"></span>
+      <span class="mono" title="${esc(h)}">${esc(h)}</span>
     </div>`;
   }
-  rows += `
+  return rows;
+}
+
+function playbackModeRow(site) {
+  const playback = (site.playback_target_url || '').trim();
+  let extraHosts = [];
+  try { extraHosts = JSON.parse(site.stream_hosts || '[]'); } catch (e) {}
+  const totalHosts = (playback ? 1 : 0) + extraHosts.length;
+  if (totalHosts === 0) return '';
+  if (totalHosts === 1 && playback === (site.target_url || '').trim()) return '';
+  const modeLabel = site.playback_mode === 'redirect' ? '重定向跟随' : '直连分流';
+  return `
     <div class="site-row">
       <span class="site-row-label">播放模式</span>
-      <span class="pill pill-blue">${modeLabel}</span>
+      <span class="pill pill-orange">${modeLabel}</span>
     </div>`;
-  return rows;
 }
 
 function showSiteModal(site) {

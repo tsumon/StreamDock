@@ -2,11 +2,11 @@
 function renderTraffic() {
   const page = document.getElementById('page-traffic');
   page.innerHTML = `
-    <header class="page-header fade-in">
+    <header class="page-header">
       <h1 class="section-title">流量统计</h1>
       <p class="section-sub">按站点查看入站 / 出站字节。计量是两端合计。</p>
     </header>
-    <div class="controls-row fade-in">
+    <div class="controls-row">
       <select class="form-select" id="traffic-site-select" aria-label="选择站点">
         <option value="">加载中…</option>
       </select>
@@ -160,21 +160,21 @@ function drawTrafficChart(logs, hours) {
     return v.toFixed(2);
   }
 
-  ctx.strokeStyle = 'rgba(255,255,255,.06)';
+  ctx.strokeStyle = '#d7e2ea';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const yy = pad.top + (i / 4) * ch;
     ctx.beginPath(); ctx.moveTo(pad.left, yy); ctx.lineTo(w - pad.right, yy); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.38)';
-    ctx.font = '11px Inter, system-ui';
+    ctx.fillStyle = '#3e5360';
+    ctx.font = '11px "Source Sans 3", "Noto Sans SC", system-ui';
     ctx.textAlign = 'right';
     const value = (4 - i) / 4 * (logs.length === 0 ? 0 : maxV);
     ctx.fillText(axisLabel(value) + ' MB', pad.left - 12, yy + 4);
   }
 
   if (logs.length === 0) {
-    ctx.fillStyle = 'rgba(255,255,255,.38)';
-    ctx.font = '14px Inter, system-ui';
+    ctx.fillStyle = '#3e5360';
+    ctx.font = '14px "Source Sans 3", "Noto Sans SC", system-ui';
     ctx.textAlign = 'center';
     ctx.fillText('这段时间没有流量记录', w / 2, h / 2);
     return;
@@ -204,8 +204,8 @@ function drawTrafficChart(logs, hours) {
     ctx.restore();
   }
 
-  smoothLine(outbound, 'rgb(100,210,255)', 'rgba(100,210,255,0.12)');
-  smoothLine(inbound, 'rgb(10,132,255)', 'rgba(10,132,255,0.12)');
+  smoothLine(outbound, 'rgb(196,92,38)', 'rgba(196,92,38,0.12)');
+  smoothLine(inbound, 'rgb(47,95,115)', 'rgba(47,95,115,0.12)');
 }
 
 window.addEventListener('resize', () => {

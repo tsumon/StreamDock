@@ -16,11 +16,11 @@ GitHub 仓库是 [`tsumon/StreamDock`](https://github.com/tsumon/StreamDock)。�
 
 ## 面板长什么样
 
-四张图来自当前面板，不是示意稿。顶栏字标还是截图时的旧名；HTML 标题、登录页和导航现在显示 **StreamDock**。
+四张图来自当前面板，不是示意稿。
 
 | 仪表盘 | 站点 | 流量 | 诊断 |
 |:---:|:---:|:---:|:---:|
-| ![仪表盘：站点状态与运行摘要](docs/dashboard.png) | ![站点管理：反代与播放回源](docs/sites.png) | ![独立流量页：按站点看入站/出站](docs/traffic.png) | ![故障诊断：回源、证书、本地监听](docs/diagnostics.png) |
+| ![仪表盘：站点拓扑与运行摘要](docs/dashboard.png) | ![站点管理：主回源与播放分流](docs/sites.png) | ![独立流量页：按站点看入站/出站](docs/traffic.png) | ![故障诊断：回源、证书、本地监听](docs/diagnostics.png) |
 
 ---
 
